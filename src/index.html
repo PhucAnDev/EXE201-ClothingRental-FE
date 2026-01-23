@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sắc Việt - Nền tảng Thuê & Hợp tác Thiết kế Trang phục Truyền thống Việt Nam</title>
+    <meta name="description" content="Nền tảng cao cấp kết hợp công nghệ 3D Mannequin cá nhân hóa và AI Stylist thông minh cho trang phục truyền thống Việt Nam">
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,500;1,600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+    
+    <style>
+        /* CSS Variables */
+        :root {
+            /* Vietnamese Fashion Colors */
+            --viet-red: #c1272d;
+            --viet-red-dark: #8b1e1f;
+            --viet-red-light: #e63946;
+            --viet-gold: #d4af37;
+            --viet-gold-dark: #b8941f;
+            --viet-gold-light: #f0d774;
+            --viet-cream: #fef9f3;
+            --viet-black: #1a1a1a;
+            --viet-gray: #4a4a4a;
+            
+            /* Typography */
+            --font-display: 'Playfair Display', serif;
+            --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+        }
+        
+        /* Reset & Base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            font-family: var(--font-body);
+            background: #fff;
+            color: var(--viet-black);
+            line-height: 1.6;
+            letter-spacing: -0.011em;
+            overflow-x: hidden;
+        }
+        
+        /* Typography */
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-display);
+            line-height: 1.1;
+        }
+        
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.25rem 3rem;
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+            background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), transparent);
+        }
+        
+        .navigation.scrolled {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-bottom: 1px solid rgba(212, 175, 55, 0.1);
+        }
+        
+        .nav-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            transition: transform 0.3s;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
+        }
+        
+        .logo-img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+        
+        .logo-text {
+            font-size: 1.5rem;
+            font-family: var(--font-display);
+            letter-spacing: 0.05em;
+            color: white;
+            transition: color 0.3s;
+        }
+        
+        .navigation.scrolled .logo-text {
+            color: var(--viet-black);
+        }
+        
+        .nav-menu {
+            display: flex;
+            gap: 2.5rem;
+            list-style: none;
+            align-items: center;
+        }
+        
+        .nav-link {
+            position: relative;
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+            letter-spacing: 0.1em;
+            font-weight: 500;
+            padding-bottom: 0.5rem;
+            transition: color 0.3s;
+        }
+        
+        .navigation.scrolled .nav-link {
+            color: var(--viet-gray);
+        }
+        
+        .nav-link:hover {
+            color: var(--viet-red);
+        }
+        
+        .nav-link.active {
+            color: var(--viet-red);
+        }
+        
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 1px;
+            width: 0;
+            background: linear-gradient(to right, var(--viet-red), var(--viet-gold));
+            transition: width 0.3s;
+        }
+        
+        .nav-link:hover::after,
+        .nav-link.active::after {
+            width: 100%;
+        }
+        
+        .btn-login {
+            padding: 0.75rem 2rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            text-decoration: none;
+            border-radius: 0.25rem;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .navigation.scrolled .btn-login {
+            background: var(--viet-red);
+            border-color: var(--viet-red);
+            color: white;
+        }
+        
+        .btn-login:hover {
+            background: white;
+            color: black;
+            transform: translateY(-2px);
+        }
+        
+        .navigation.scrolled .btn-login:hover {
+            background: var(--viet-red-dark);
+        }
+        
+        /* Hero Section */
+        .hero {
+            position: relative;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000, #1a1a1a, #000);
+        }
+        
+        .hero-bg {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+        }
+        
+        .hero-bg img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.6;
+        }
+        
+        .hero-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom right, rgba(0, 0, 0, 0.9), rgba(26, 26, 26, 0.8), rgba(0, 0, 0, 0.7));
+        }
+        
+        .hero-decoration {
+            position: absolute;
+            top: 5rem;
+            right: 5rem;
+            width: 24rem;
+            height: 24rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.15), transparent 70%);
+            filter: blur(60px);
+            animation: pulse-gold 8s infinite;
+        }
+        
+        .hero-decoration-2 {
+            position: absolute;
+            bottom: 5rem;
+            left: 5rem;
+            width: 31rem;
+            height: 31rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(193, 39, 45, 0.2), transparent 70%);
+            filter: blur(60px);
+            animation: pulse-red 10s infinite 1s;
+        }
+        
+        @keyframes pulse-gold {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.5; }
+        }
+        
+        @keyframes pulse-red {
+            0%, 100% { transform: scale(1); opacity: 0.2; }
+            50% { transform: scale(1.3); opacity: 0.4; }
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 10;
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 8rem 3rem;
+            width: 100%;
+        }
+        
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: linear-gradient(to right, rgba(212, 175, 55, 0.2), rgba(193, 39, 45, 0.2));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+            border-radius: 50px;
+            padding: 0.75rem 1.5rem;
+            margin-bottom: 3rem;
+        }
+        
+        .hero-badge-text {
+            color: var(--viet-gold-light);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+        
+        .hero-title {
+            font-size: clamp(3rem, 8vw, 6rem);
+            color: white;
+            margin-bottom: 2rem;
+            line-height: 0.95;
+            letter-spacing: -0.02em;
+            max-width: 56rem;
+        }
+        
+        .hero-title-gradient {
+            background: linear-gradient(to right, var(--viet-red), var(--viet-red-light), var(--viet-gold));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-style: italic;
+            display: inline-block;
+            margin: 0.5rem 0;
+        }
+        
+        .hero-description {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 3rem;
+            max-width: 42rem;
+        }
+        
+        .hero-description::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(to bottom, var(--viet-gold), transparent);
+        }
+        
+        .hero-description p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: clamp(1.125rem, 2vw, 1.5rem);
+            line-height: 1.6;
+        }
+        
+        .hero-description .highlight {
+            color: var(--viet-gold);
+            font-weight: 500;
+        }
+        
+        .hero-description small {
+            display: block;
+            margin-top: 0.75rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 1.125rem;
+        }
+        
+        .hero-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+            margin-bottom: 6rem;
+        }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            padding: 1rem 2.5rem;
+            font-size: 1.125rem;
+            font-weight: 500;
+            text-decoration: none;
+            border-radius: 0.25rem;
+            transition: all 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(to right, var(--viet-red), var(--viet-red-dark));
+            color: white;
+            box-shadow: 0 10px 30px rgba(193, 39, 45, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(to right, var(--viet-red-dark), var(--viet-red));
+            box-shadow: 0 15px 40px rgba(193, 39, 45, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(212, 175, 55, 0.5);
+        }
+        
+        .btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+        
+        .btn svg:first-child {
+            margin-right: 0.75rem;
+        }
+        
+        .btn svg:last-child {
+            margin-left: 0.75rem;
+            transition: transform 0.3s;
+        }
+        
+        .btn:hover svg:last-child {
+            transform: translateX(0.5rem);
+        }
+        
+        .hero-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 3rem;
+            padding-top: 3rem;
+            border-top: 1px solid rgba(212, 175, 55, 0.2);
+        }
+        
+        .stat-item {
+            transition: transform 0.5s;
+        }
+        
+        .stat-item:hover {
+            transform: scale(1.1);
+        }
+        
+        .stat-number {
+            font-size: 4rem;
+            font-family: var(--font-display);
+            background: linear-gradient(135deg, var(--viet-gold), var(--viet-gold-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.75rem;
+            letter-spacing: -0.02em;
+        }
+        
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+        
+        .stat-divider {
+            height: 1px;
+            width: 4rem;
+            background: linear-gradient(to right, var(--viet-gold), transparent);
+            margin-top: 0.75rem;
+        }
+        
+        /* Scroll Indicator */
+        .scroll-indicator {
+            position: absolute;
+            bottom: 3rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(10px); }
+        }
+        
+        .scroll-indicator-text {
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+        
+        .scroll-indicator-line {
+            width: 1px;
+            height: 4rem;
+            background: linear-gradient(to bottom, var(--viet-gold), transparent);
+        }
+        
+        /* Outfit Gallery Section */
+        .gallery-section {
+            position: relative;
+            padding: 10rem 3rem;
+            background: linear-gradient(to bottom, #fdfcfb, white, var(--viet-cream));
+            overflow: hidden;
+        }
+        
+        .gallery-decoration {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            pointer-events: none;
+        }
+        
+        .gallery-decoration-1 {
+            top: 5rem;
+            left: 2.5rem;
+            width: 31rem;
+            height: 31rem;
+            background: radial-gradient(circle, rgba(193, 39, 45, 0.15), transparent 70%);
+            opacity: 0.2;
+        }
+        
+        .gallery-decoration-2 {
+            bottom: 5rem;
+            right: 2.5rem;
+            width: 37rem;
+            height: 37rem;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.15), transparent 70%);
+            opacity: 0.2;
+        }
+        
+        .section-header {
+            text-align: center;
+            margin-bottom: 5rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .section-label {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+        }
+        
+        .section-label-text {
+            color: var(--viet-gold);
+            text-transform: uppercase;
+            letter-spacing: 0.3em;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        
+        .section-label-divider {
+            height: 1px;
+            width: 100%;
+            background: linear-gradient(to right, transparent, var(--viet-gold), transparent);
+            margin-top: 0.5rem;
+        }
+        
+        .section-title {
+            font-size: clamp(3rem, 6vw, 5rem);
+            color: var(--viet-black);
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.02em;
+        }
+        
+        .section-title-gradient {
+            background: linear-gradient(135deg, var(--viet-gold), var(--viet-gold-light));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-style: italic;
+        }
+        
+        .section-description {
+            color: #6b6b6b;
+            font-size: clamp(1.125rem, 2vw, 1.25rem);
+            max-width: 42rem;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            max-width: 1280px;
+            margin: 0 auto 5rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .outfit-card {
+            background: white;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        
+        .outfit-card:hover {
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transform: translateY(-10px);
+        }
+        
+        .outfit-image-wrapper {
+            position: relative;
+            overflow: hidden;
+            aspect-ratio: 3 / 4.5;
+            background: #f5f5f0;
+            margin-bottom: 1.5rem;
+        }
+        
+        .outfit-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.7s ease-out;
+        }
+        
+        .outfit-card:hover .outfit-image {
+            transform: scale(1.08);
+        }
+        
+        .outfit-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+        
+        .outfit-card:hover .outfit-overlay {
+            opacity: 1;
+        }
+        
+        .outfit-info {
+            padding: 0 1.5rem 1.5rem;
+        }
+        
+        .outfit-tags {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .outfit-tag {
+            padding: 0.25rem 0.75rem;
+            background: rgba(212, 175, 55, 0.1);
+            color: var(--viet-gold-dark);
+            font-size: 0.75rem;
+            border-radius: 50px;
+            font-weight: 500;
+        }
+        
+        .outfit-name {
+            font-size: 1.25rem;
+            font-family: var(--font-display);
+            color: var(--viet-black);
+            margin-bottom: 0.5rem;
+        }
+        
+        .outfit-designer {
+            color: #6b6b6b;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+        
+        .outfit-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .outfit-price {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--viet-red);
+            font-family: var(--font-display);
+        }
+        
+        .outfit-rating {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--viet-gold);
+            font-size: 0.875rem;
+        }
+        
+        /* Footer */
+        .footer {
+            position: relative;
+            background: linear-gradient(to bottom, var(--viet-black), #0f0f0f, black);
+            color: white;
+            padding: 6rem 3rem 3rem;
+            overflow: hidden;
+        }
+        
+        .footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, var(--viet-gold), transparent);
+            opacity: 0.5;
+        }
+        
+        .footer-decoration {
+            position: absolute;
+            top: 5rem;
+            right: 5rem;
+            width: 24rem;
+            height: 24rem;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(212, 175, 55, 0.3), transparent 70%);
+            filter: blur(60px);
+            opacity: 0.1;
+        }
+        
+        .footer-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 10;
+        }
+        
+        .footer-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 4rem;
+            margin-bottom: 4rem;
+        }
+        
+        .footer-brand {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .footer-brand img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+        
+        .footer-brand-text {
+            font-size: 1.875rem;
+            font-family: var(--font-display);
+            letter-spacing: 0.05em;
+        }
+        
+        .footer-description {
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-size: 0.875rem;
+        }
+        
+        .footer-social {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .social-link {
+            width: 44px;
+            height: 44px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+        
+        .social-link:hover {
+            background: var(--viet-gold);
+            border-color: var(--viet-gold);
+            transform: translateY(-3px);
+        }
+        
+        .social-link svg {
+            width: 20px;
+            height: 20px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .social-link:hover svg {
+            color: white;
+        }
+        
+        .footer-column h3 {
+            color: white;
+            margin-bottom: 1.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            font-size: 0.875rem;
+        }
+        
+        .footer-divider {
+            height: 1px;
+            width: 3rem;
+            background: var(--viet-gold);
+            margin-bottom: 1.5rem;
+        }
+        
+        .footer-links {
+            list-style: none;
+        }
+        
+        .footer-links li {
+            margin-bottom: 1rem;
+        }
+        
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: var(--viet-gold);
+        }
+        
+        .footer-contact {
+            list-style: none;
+        }
+        
+        .footer-contact li {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            margin-bottom: 1.25rem;
+        }
+        
+        .footer-contact svg {
+            width: 20px;
+            height: 20px;
+            color: var(--viet-gold);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        
+        .footer-contact a {
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            font-size: 0.875rem;
+            transition: color 0.3s;
+        }
+        
+        .footer-contact a:hover {
+            color: var(--viet-gold);
+        }
+        
+        .footer-bottom {
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.875rem;
+        }
+        
+        /* Contact Float Button */
+        .contact-float {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 999;
+        }
+        
+        .contact-float-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--viet-red), var(--viet-red-dark));
+            box-shadow: 0 10px 30px rgba(193, 39, 45, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: none;
+        }
+        
+        .contact-float-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 15px 40px rgba(193, 39, 45, 0.6);
+        }
+        
+        .contact-float-btn svg {
+            width: 24px;
+            height: 24px;
+            color: white;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navigation {
+                padding: 1rem 1.5rem;
+            }
+            
+            .nav-menu {
+                display: none;
+            }
+            
+            .hero-content {
+                padding: 6rem 1.5rem;
+            }
+            
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            
+            .hero-buttons {
+                flex-direction: column;
+            }
+            
+            .hero-stats {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            
+            .gallery-section {
+                padding: 5rem 1.5rem;
+            }
+            
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .footer {
+                padding: 4rem 1.5rem 2rem;
+            }
+            
+            .footer-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+        
+        /* Utilities */
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 3rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navigation" id="navigation">
+        <div class="nav-container">
+            <a href="#trang-chu" class="logo">
+                <img src="https://via.placeholder.com/56x56/c1272d/ffffff?text=SV" alt="Sắc Việt Logo" class="logo-img">
+                <span class="logo-text">Sắc Việt</span>
+            </a>
+            
+            <ul class="nav-menu">
+                <li><a href="#trang-chu" class="nav-link active">Trang chủ</a></li>
+                <li><a href="#bo-suu-tap" class="nav-link">Bộ sưu tập</a></li>
+                <li><a href="#ai-stylist" class="nav-link">AI Stylist</a></li>
+                <li><a href="#dich-vu" class="nav-link">Dịch vụ</a></li>
+                <li><a href="#lien-he" class="nav-link">Liên hệ</a></li>
+            </ul>
+            
+            <a href="#" class="btn-login">Đăng nhập</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section id="trang-chu" class="hero">
+        <div class="hero-bg">
+            <img src="https://images.unsplash.com/photo-1675389017197-9ae63c2b2fe8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=1920&q=80" alt="Áo dài truyền thống Việt Nam">
+            <div class="hero-overlay"></div>
+        </div>
+        
+        <div class="hero-decoration"></div>
+        <div class="hero-decoration-2"></div>
+        
+        <div class="hero-content">
+            <div class="hero-badge">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: #d4af37;">
+                    <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"/>
+                    <path d="M19 12l.75 2.25L22 15l-2.25.75L19 18l-.75-2.25L16 15l2.25-.75L19 12z"/>
+                </svg>
+                <span class="hero-badge-text">Bảo Tồn Văn Hóa Việt</span>
+            </div>
+            
+            <h1 class="hero-title">
+                Trải Nghiệm<br>
+                <span class="hero-title-gradient">Áo Dài</span><br>
+                Truyền Thống Việt Nam
+            </h1>
+            
+            <div class="hero-description">
+                <p>
+                    Nền tảng cao cấp kết hợp công nghệ <span class="highlight">3D Mannequin</span> cá nhân hóa 
+                    và <span class="highlight">AI Stylist</span> thông minh.
+                    <small>Makeup · Styling · Photography · Videography</small>
+                </p>
+            </div>
+            
+            <div class="hero-buttons">
+                <a href="#bo-suu-tap" class="btn btn-primary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                    Đặt Lịch Ngay
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+                <a href="#bo-suu-tap" class="btn btn-secondary">
+                    Khám Phá Bộ Sưu Tập
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="5" y1="12" x2="19" y2="12"/>
+                        <polyline points="12 5 19 12 12 19"/>
+                    </svg>
+                </a>
+            </div>
+            
+            <div class="hero-stats">
+                <div class="stat-item">
+                    <div class="stat-number">500<span style="font-size: 1.875rem;">+</span></div>
+                    <div class="stat-label">Trang Phục Độc Đáo</div>
+                    <div class="stat-divider"></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">50<span style="font-size: 1.875rem;">+</span></div>
+                    <div class="stat-label">Nhà Thiết Kế</div>
+                    <div class="stat-divider"></div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">5K<span style="font-size: 1.875rem;">+</span></div>
+                    <div class="stat-label">Khách Hài Lòng</div>
+                    <div class="stat-divider"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="scroll-indicator">
+            <div class="scroll-indicator-text">Khám Phá</div>
+            <div class="scroll-indicator-line"></div>
+        </div>
+    </section>
+
+    <!-- Outfit Gallery Section -->
+    <section id="bo-suu-tap" class="gallery-section">
+        <div class="gallery-decoration gallery-decoration-1"></div>
+        <div class="gallery-decoration gallery-decoration-2"></div>
+        
+        <div class="section-header">
+            <div class="section-label">
+                <span class="section-label-text">Collection</span>
+                <div class="section-label-divider"></div>
+            </div>
+            <h2 class="section-title">
+                Bộ Sưu Tập<br>
+                <span class="section-title-gradient">Đặc Sắc</span>
+            </h2>
+            <p class="section-description">
+                Hơn 500 thiết kế áo dài và trang phục truyền thống từ các nhà thiết kế hàng đầu Việt Nam
+            </p>
+        </div>
+        
+        <div class="gallery-grid">
+            <!-- Outfit Card 1 -->
+            <div class="outfit-card">
+                <div class="outfit-image-wrapper">
+                    <img src="https://images.unsplash.com/photo-1675389017197-9ae63c2b2fe8?w=500&q=80" alt="Áo Dài Truyền Thống Hồng" class="outfit-image">
+                    <div class="outfit-overlay"></div>
+                </div>
+                <div class="outfit-info">
+                    <div class="outfit-tags">
+                        <span class="outfit-tag">Sự Kiện</span>
+                        <span class="outfit-tag">Cưới Hỏi</span>
+                    </div>
+                    <h3 class="outfit-name">Áo Dài Truyền Thống Hồng</h3>
+                    <p class="outfit-designer">NTK Minh Hạnh</p>
+                    <div class="outfit-footer">
+                        <span class="outfit-price">500.000đ</span>
+                        <div class="outfit-rating">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Outfit Card 2 -->
+            <div class="outfit-card">
+                <div class="outfit-image-wrapper">
+                    <img src="https://images.unsplash.com/photo-1676696970495-f16aac1ad17f?w=500&q=80" alt="Áo Dài Hiện Đại Xanh" class="outfit-image">
+                    <div class="outfit-overlay"></div>
+                </div>
+                <div class="outfit-info">
+                    <div class="outfit-tags">
+                        <span class="outfit-tag">Dạo Phố</span>
+                        <span class="outfit-tag">Chụp Hình</span>
+                    </div>
+                    <h3 class="outfit-name">Áo Dài Hiện Đại Xanh</h3>
+                    <p class="outfit-designer">NTK Công Trí</p>
+                    <div class="outfit-footer">
+                        <span class="outfit-price">750.000đ</span>
+                        <div class="outfit-rating">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>5.0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Outfit Card 3 -->
+            <div class="outfit-card">
+                <div class="outfit-image-wrapper">
+                    <img src="https://images.unsplash.com/photo-1687340800062-eb0d1a71737a?w=500&q=80" alt="Bộ Sưu Tập Hoàng Gia" class="outfit-image">
+                    <div class="outfit-overlay"></div>
+                </div>
+                <div class="outfit-info">
+                    <div class="outfit-tags">
+                        <span class="outfit-tag">Premium</span>
+                        <span class="outfit-tag">Limited</span>
+                    </div>
+                    <h3 class="outfit-name">Bộ Sưu Tập Hoàng Gia</h3>
+                    <p class="outfit-designer">Sắc Việt Studio</p>
+                    <div class="outfit-footer">
+                        <span class="outfit-price">1.200.000đ</span>
+                        <div class="outfit-rating">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>4.8</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Outfit Card 4 -->
+            <div class="outfit-card">
+                <div class="outfit-image-wrapper">
+                    <img src="https://images.unsplash.com/photo-1759671826519-072758927711?w=500&q=80" alt="Áo Dài Đỏ Sang Trọng" class="outfit-image">
+                    <div class="outfit-overlay"></div>
+                </div>
+                <div class="outfit-info">
+                    <div class="outfit-tags">
+                        <span class="outfit-tag">Tết</span>
+                        <span class="outfit-tag">Lễ Hội</span>
+                    </div>
+                    <h3 class="outfit-name">Áo Dài Đỏ Sang Trọng</h3>
+                    <p class="outfit-designer">NTK Thủy Nguyễn</p>
+                    <div class="outfit-footer">
+                        <span class="outfit-price">650.000đ</span>
+                        <div class="outfit-rating">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            <span>4.9</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="lien-he" class="footer">
+        <div class="footer-decoration"></div>
+        
+        <div class="footer-container">
+            <div class="footer-grid">
+                <!-- Brand -->
+                <div>
+                    <div class="footer-brand">
+                        <img src="https://via.placeholder.com/56x56/c1272d/ffffff?text=SV" alt="Sắc Việt Logo">
+                        <span class="footer-brand-text">Sắc Việt</span>
+                    </div>
+                    <p class="footer-description">
+                        Nền tảng cao cấp kết nối bạn với vẻ đẹp truyền thống Việt Nam qua công nghệ tiên tiến.
+                    </p>
+                    <div class="footer-social">
+                        <a href="#" class="social-link">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+                            </svg>
+                        </a>
+                        <a href="#" class="social-link">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M23 7s-.2-1.4-.8-2c-.7-.8-1.6-.8-2-.8C17.3 4 12 4 12 4s-5.3 0-8.2.2c-.4 0-1.3 0-2 .8-.6.6-.8 2-.8 2S1 8.5 1 10.2v1.5C1 13.5 1 15 1 15s.2 1.4.8 2c.7.8 1.7.8 2.2.8 1.6.2 7.8.2 8 .2s5.3 0 8.2-.2c.4 0 1.3 0 2-.8.6-.6.8-2 .8-2s.2-1.5.2-3.3v-1.5C23 8.5 23 7 23 7zM9.5 14.5v-7l6.5 3.5-6.5 3.5z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Services -->
+                <div class="footer-column">
+                    <h3>Dịch Vụ</h3>
+                    <div class="footer-divider"></div>
+                    <ul class="footer-links">
+                        <li><a href="#">Thuê Trang Phục</a></li>
+                        <li><a href="#">3D Mannequin</a></li>
+                        <li><a href="#">AI Stylist</a></li>
+                        <li><a href="#">Makeup & Styling</a></li>
+                        <li><a href="#">Chụp Hình & Quay Phim</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Partners -->
+                <div class="footer-column">
+                    <h3>Đối Tác</h3>
+                    <div class="footer-divider"></div>
+                    <ul class="footer-links">
+                        <li><a href="#">Trở Thành Nhà Thiết Kế</a></li>
+                        <li><a href="#">Hợp Tác Dịch Vụ</a></li>
+                        <li><a href="#">Chương Trình Affiliate</a></li>
+                        <li><a href="#">Về Chúng Tôi</a></li>
+                        <li><a href="#">Tin Tức & Blog</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Contact -->
+                <div class="footer-column">
+                    <h3>Liên Hệ</h3>
+                    <div class="footer-divider"></div>
+                    <ul class="footer-contact">
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                                <circle cx="12" cy="10" r="3"/>
+                            </svg>
+                            <span>123 Lê Lợi, Quận 1<br>TP. Hồ Chí Minh</span>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+                            </svg>
+                            <a href="tel:0901234567">0901 234 567</a>
+                        </li>
+                        <li>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                                <polyline points="22,6 12,13 2,6"/>
+                            </svg>
+                            <a href="mailto:hello@sacviet.vn">hello@sacviet.vn</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="footer-bottom">
+                <p>© 2024 Sắc Việt. All rights reserved. | Designed by Hoa Quoc Huynh (K17 HCM)</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Contact Float Button -->
+    <div class="contact-float">
+        <button class="contact-float-btn" aria-label="Liên hệ">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>
+            </svg>
+        </button>
+    </div>
+
+    <script>
+        // Navigation scroll effect
+        const navigation = document.getElementById('navigation');
+        const navLinks = document.querySelectorAll('.nav-link');
+        
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 50) {
+                navigation.classList.add('scrolled');
+            } else {
+                navigation.classList.remove('scrolled');
+            }
+            
+            // Active section highlighting
+            const sections = document.querySelectorAll('section[id]');
+            const scrollPosition = window.scrollY + 100;
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                const sectionHeight = section.offsetHeight;
+                const sectionId = section.getAttribute('id');
+                
+                if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                    navLinks.forEach(link => {
+                        link.classList.remove('active');
+                        if (link.getAttribute('href') === `#${sectionId}`) {
+                            link.classList.add('active');
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+        
+        // Contact float button
+        const contactFloatBtn = document.querySelector('.contact-float-btn');
+        contactFloatBtn.addEventListener('click', () => {
+            alert('Liên hệ: 0901 234 567 hoặc hello@sacviet.vn');
+            // Trong thực tế, bạn có thể mở modal chat hoặc redirect đến trang liên hệ
+        });
+    </script>
+</body>
+</html>
