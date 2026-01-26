@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 import { useDispatch } from "react-redux";
 import type { AppDispatch } from "../store";
 import { loginUser } from "../features/auth/authSlice";
+import { toast } from "sonner";
 
 interface LoginDialogProps {
   children: ReactNode;
@@ -39,6 +40,7 @@ export function LoginDialog({
       setEmail("");
       setPassword("");
       onOpenChange(false);
+      toast.success("Đăng nhập thành công!", { duration: 5000 });
 
       // Navigate based on roleName from backend
       const roleName = (user &&
@@ -61,6 +63,11 @@ export function LoginDialog({
   const handleRegister = () => {
     onOpenChange(false);
     navigate("/dang-ky");
+  };
+
+  const handleForgotPassword = () => {
+    onOpenChange(false);
+    navigate("/quen-mat-khau");
   };
 
   return (
@@ -130,7 +137,10 @@ export function LoginDialog({
             </p>
             <p className="text-sm text-gray-600">
               Quên mật khẩu?{" "}
-              <button className="text-blue-500 hover:underline">
+              <button
+                onClick={handleForgotPassword}
+                className="text-blue-500 hover:underline"
+              >
                 Khôi phục mật khẩu
               </button>
             </p>

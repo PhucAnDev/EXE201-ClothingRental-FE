@@ -3,10 +3,13 @@ import { Input } from "./ui/input";
 import { Button } from "./ui/button";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { registerUser } from "../features/auth/authSlice";
 
 export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess, onSwitchToLogin }) {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -15,28 +18,54 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
     phone: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [formError, setFormError] = useState("");
+
+  const validateForm = () => {
+    const nextErrors = {};
+    const fullName = formData.fullName.trim();
+    const email = formData.email.trim();
+    const phone = formData.phone.trim();
+
+    if (!fullName) {
+      nextErrors.fullName = "Vui lòng nhập họ và tên";
+    }
+
+    if (!email) {
+      nextErrors.email = "Vui lòng nhập email";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        nextErrors.email = "Email không hợp lệ";
+      }
+    }
+
+    if (phone) {
+      const cleanedPhone = phone.replace(/\s/g, "");
+      if (!/^\d{10}$/.test(cleanedPhone)) {
+        nextErrors.phone = "Số điện thoại không hợp lệ (10 chữ số)";
+      }
+    }
+
+    if (!formData.password) {
+      nextErrors.password = "Vui lòng nhập mật khẩu";
+    } else if (formData.password.length < 6) {
+      nextErrors.password = "Mật khẩu phải có ít nhất 6 ký tự";
+    }
+
+    if (!formData.confirmPassword) {
+      nextErrors.confirmPassword = "Vui lòng xác nhận mật khẩu";
+    } else if (formData.password !== formData.confirmPassword) {
+      nextErrors.confirmPassword = "Mật khẩu xác nhận không khớp";
+    }
+
+    setErrors(nextErrors);
+    return Object.keys(nextErrors).length === 0;
+  };
 
   const handleRegister = async () => {
-    // Validation
-    if (!formData.fullName || !formData.email || !formData.password || !formData.confirmPassword) {
-      alert("Vui lòng điền đầy đủ thông tin!");
-      return;
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      alert("Mật khẩu xác nhận không khớp!");
-      return;
-    }
-
-    if (formData.password.length < 6) {
-      alert("Mật khẩu phải có ít nhất 6 ký tự!");
-      return;
-    }
-
-    // Check email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      alert("Email không hợp lệ!");
+    setFormError("");
+    if (!validateForm()) {
       return;
     }
 
@@ -50,9 +79,7 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
         phoneNumber: formData.phone?.trim() || "",
       };
 
-      const result = await dispatch(registerUser(payload)).unwrap();
-      const message = result?.message || "🎉 Đăng ký thành công!";
-      alert(message);
+      await dispatch(registerUser(payload)).unwrap();
 
       setFormData({
         fullName: "",
@@ -61,18 +88,30 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
         confirmPassword: "",
         phone: "",
       });
+      setErrors({});
+      setFormError("");
 
-      if (onSwitchToLogin) {
-        onSwitchToLogin();
-      } else {
-        onOpenChange(false);
-      }
+      onOpenChange(false);
+      navigate("/");
+      toast.success(
+        "Đăng ký tài khoản thành công, hãy đăng nhập tài khoản của bạn.",
+        { duration: 5000 },
+      );
     } catch (err) {
       const message =
-        err?.message || (typeof err === "string" ? err : "Đăng ký thất bại!");
-      alert(message);
+        (typeof err === "string" ? err : err?.message || err?.error) ||
+        "Đăng ký thất bại!";
+      setFormError(message);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setErrors((prev) => (prev[field] ? { ...prev, [field]: "" } : prev));
+    if (formError) {
+      setFormError("");
     }
   };
 
@@ -103,14 +142,22 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
         </div>
         
         <div className="space-y-4">
+          {formError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {formError}
+            </div>
+          )}
           <div className="space-y-2">
             <Input
               type="text"
               placeholder="Họ và tên"
               value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-              className="h-12 bg-gray-50 border-gray-200"
+              onChange={(e) => handleChange("fullName", e.target.value)}
+              className={`h-12 bg-gray-50 border-gray-200 ${errors.fullName ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
+            {errors.fullName && (
+              <p className="text-sm text-red-600">{errors.fullName}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -118,9 +165,12 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
               type="email"
               placeholder="Email"
               value={formData.email}
-              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              className="h-12 bg-gray-50 border-gray-200"
+              onChange={(e) => handleChange("email", e.target.value)}
+              className={`h-12 bg-gray-50 border-gray-200 ${errors.email ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
+            {errors.email && (
+              <p className="text-sm text-red-600">{errors.email}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -128,9 +178,12 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
               type="tel"
               placeholder="Số điện thoại (không bắt buộc)"
               value={formData.phone}
-              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              className="h-12 bg-gray-50 border-gray-200"
+              onChange={(e) => handleChange("phone", e.target.value)}
+              className={`h-12 bg-gray-50 border-gray-200 ${errors.phone ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
+            {errors.phone && (
+              <p className="text-sm text-red-600">{errors.phone}</p>
+            )}
           </div>
           
           <div className="space-y-2">
@@ -138,9 +191,12 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
               type="password"
               placeholder="Mật khẩu"
               value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              className="h-12 bg-gray-50 border-gray-200"
+              onChange={(e) => handleChange("password", e.target.value)}
+              className={`h-12 bg-gray-50 border-gray-200 ${errors.password ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
+            {errors.password && (
+              <p className="text-sm text-red-600">{errors.password}</p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -148,10 +204,13 @@ export function RegisterDialog({ children, open, onOpenChange, onRegisterSuccess
               type="password"
               placeholder="Xác nhận mật khẩu"
               value={formData.confirmPassword}
-              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              onChange={(e) => handleChange("confirmPassword", e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleRegister()}
-              className="h-12 bg-gray-50 border-gray-200"
+              className={`h-12 bg-gray-50 border-gray-200 ${errors.confirmPassword ? "border-red-500 focus-visible:ring-red-500" : ""}`}
             />
+            {errors.confirmPassword && (
+              <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+            )}
           </div>
 
           <p className="text-xs text-gray-400 text-center">

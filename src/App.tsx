@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { ContactFloat } from "./components/ContactFloat";
+import { Toaster } from "./components/ui/sonner";
 import { HomePage } from "./pages/HomePage";
 import { CollectionPage } from "./pages/CollectionPage";
 import { AIStylistPage } from "./pages/AIStylistPage";
@@ -14,6 +15,9 @@ import { ServicesPage } from "./pages/ServicesPage";
 import { AboutPage } from "./pages/AboutPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { RegisterPage } from "./pages/RegisterPage";
+import { ForgotPasswordFindPage } from "./pages/ForgotPasswordFindPage";
+import { ForgotPasswordVerifyPage } from "./pages/ForgotPasswordVerifyPage";
+import { ForgotPasswordResetPage } from "./pages/ForgotPasswordResetPage";
 import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ProductDetailTest } from "./pages/ProductDetailTest";
@@ -47,6 +51,15 @@ function AppContent() {
         <Route path="/ve-chung-toi" element={<AboutPage />} />
         <Route path="/thanh-toan" element={<CheckoutPage />} />
         <Route path="/dang-ky" element={<RegisterPage />} />
+        <Route path="/quen-mat-khau" element={<ForgotPasswordFindPage />} />
+        <Route
+          path="/quen-mat-khau/xac-minh"
+          element={<ForgotPasswordVerifyPage />}
+        />
+        <Route
+          path="/quen-mat-khau/doi-mat-khau"
+          element={<ForgotPasswordResetPage />}
+        />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/orders" element={<ProfilePage />} />
         <Route path="/wishlist" element={<ProfilePage />} />
@@ -72,6 +85,7 @@ export default function App() {
   return (
     <Router>
       <AppContent />
+      <Toaster />
     </Router>
   );
 }

@@ -1,15 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import { Badge } from "../components/ui/badge";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
   User,
   Mail,
   Phone,
-  MapPin,
   Calendar,
   Package,
   Heart,
@@ -22,15 +28,21 @@ import {
   CheckCircle,
   XCircle,
   Star,
-  Lock
+  Lock,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { toast } from "sonner";
+import {
+  changePassword,
+  getUserById,
+  updateUserProfile,
+} from "../features/auth/authService";
 
 export function ProfilePage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "info";
-  
+
   // Check if user is logged in
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem("currentUser");
@@ -40,189 +52,393 @@ export function ProfilePage() {
     }
     return JSON.parse(savedUser);
   });
-  
-  const [isEditing, setIsEditing] = useState(false);
+  const userId = user?.userId || user?.id;
+
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmChangeOpen, setIsConfirmChangeOpen] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const skipCloseResetRef = useRef(false);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || "",
-    phone: user?.phone || "",
-    address: user?.address || "123 Đường ABC, Quận 1, TP.HCM",
-    birthDate: user?.birthDate || "1990-01-01"
+    phone: user?.phoneNumber || user?.phone || "",
+    address: user?.address || "",
+    birthDate: user?.birthDate || "1990-01-01",
+    avatarUrl: user?.avatarUrl || user?.avatar || "",
   });
-  
+  const [avatarPreview, setAvatarPreview] = useState(
+    user?.avatarUrl || user?.avatar || "",
+  );
+  const [avatarUrlInput, setAvatarUrlInput] = useState(
+    user?.avatarUrl || user?.avatar || "",
+  );
+
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
-    confirmPassword: ""
+    confirmPassword: "",
   });
-  
+
   // Mock data for orders
   const [orders] = useState([
     {
       id: "ORD001",
       productName: "Áo Dài Truyền Thống Đỏ",
-      image: "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      image:
+        "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
       size: "M",
       rentalDays: 3,
       totalPrice: 4500000,
       status: "completed",
       orderDate: "2024-12-01",
       rentalDate: "2024-12-15",
-      returnDate: "2024-12-18"
+      returnDate: "2024-12-18",
     },
     {
       id: "ORD002",
       productName: "Áo Tứ Thân Hoàng Kim",
-      image: "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      image:
+        "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
       size: "L",
       rentalDays: 2,
       totalPrice: 4400000,
       status: "active",
       orderDate: "2025-01-05",
       rentalDate: "2025-01-10",
-      returnDate: "2025-01-12"
+      returnDate: "2025-01-12",
     },
     {
       id: "ORD003",
       productName: "Áo Dài Cách Tân Hồng",
-      image: "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      image:
+        "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
       size: "S",
       rentalDays: 1,
       totalPrice: 1800000,
       status: "pending",
       orderDate: "2025-01-13",
       rentalDate: "2025-01-20",
-      returnDate: "2025-01-21"
-    }
+      returnDate: "2025-01-21",
+    },
   ]);
-  
+
   // Mock data for wishlist
   const [wishlist, setWishlist] = useState([
     {
       id: 1,
       name: "Áo Dài Trắng Tinh Khôi",
       price: 1350000,
-      image: "https://images.unsplash.com/photo-1760341682582-afb4681164d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwY3VsdHVyZSUyMGRyZXNzJTIwYmx1ZXxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      image:
+        "https://images.unsplash.com/photo-1760341682582-afb4681164d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwY3VsdHVyZSUyMGRyZXNzJTIwYmx1ZXxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
       rating: 4.8,
-      available: true
+      available: true,
     },
     {
       id: 4,
       name: "Áo Dải Lụa Xanh Ngọc",
       price: 1600000,
-      image: "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      image:
+        "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
       rating: 4.9,
-      available: true
-    }
+      available: true,
+    },
   ]);
-  
+
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
-  
-  const handleSave = () => {
-    const updatedUser = { ...user, ...formData };
-    localStorage.setItem("currentUser", JSON.stringify(updatedUser));
-    setUser(updatedUser);
-    setIsEditing(false);
-    alert("Đã lưu thông tin!");
-  };
-  
-  const handleCancel = () => {
+
+  useEffect(() => {
+    if (!isEditOpen) {
+      skipCloseResetRef.current = false;
+    }
+  }, [isEditOpen]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProfile = async () => {
+      if (!userId) return;
+
+      setProfileLoading(true);
+      setProfileError("");
+
+      try {
+        const token = localStorage.getItem("authToken");
+        const res = await getUserById(userId, token);
+        if (!isMounted) return;
+
+        const avatarUrl = res.avatarUrl ?? "";
+        const phoneNumber = res.phoneNumber ?? "";
+
+        const nextUser = {
+          ...user,
+          ...res,
+          phone: phoneNumber || user?.phone || user?.phoneNumber || "",
+          phoneNumber: phoneNumber || user?.phoneNumber || "",
+          avatarUrl,
+        };
+
+        setUser(nextUser);
+        setFormData((prev) => ({
+          ...prev,
+          fullName: res.fullName ?? prev.fullName,
+          phone: phoneNumber || prev.phone,
+          avatarUrl: avatarUrl || prev.avatarUrl,
+        }));
+        setAvatarPreview(avatarUrl);
+        setAvatarUrlInput(avatarUrl);
+        localStorage.setItem("currentUser", JSON.stringify(nextUser));
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("user-profile-updated"));
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        setProfileError("Không thể tải thông tin cá nhân.");
+      } finally {
+        if (isMounted) setProfileLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId]);
+
+  const getAvatarUrl = (value) => value?.avatarUrl || value?.avatar || "";
+
+  const openEditModal = () => {
+    const avatarUrl = getAvatarUrl(user);
     setFormData({
       fullName: user?.fullName || "",
-      phone: user?.phone || "",
+      phone: user?.phoneNumber || user?.phone || "",
       address: user?.address || "",
-      birthDate: user?.birthDate || ""
+      birthDate: user?.birthDate || "1990-01-01",
+      avatarUrl,
     });
-    setIsEditing(false);
+    setAvatarPreview(avatarUrl);
+    setAvatarUrlInput(avatarUrl);
+    setIsEditOpen(true);
   };
-  
+
+  const handleAvatarFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setAvatarPreview(result);
+      setFormData((prev) => ({ ...prev, avatarUrl: result }));
+      setAvatarUrlInput("");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarUrlChange = (event) => {
+    const value = event.target.value;
+    setAvatarUrlInput(value);
+    setAvatarPreview(value);
+    setFormData((prev) => ({ ...prev, avatarUrl: value }));
+  };
+
+  const handleSave = async () => {
+    if (!userId) {
+      toast.error("Không tìm thấy tài khoản.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const payload = {
+        fullName: formData.fullName?.trim() || "",
+        phoneNumber: formData.phone?.trim() || "",
+        avatarUrl: formData.avatarUrl || null,
+      };
+
+      const res = await updateUserProfile(userId, payload, token);
+
+      const updatedUser = {
+        ...user,
+        ...formData,
+        ...res,
+        fullName: res.fullName ?? payload.fullName ?? formData.fullName,
+        phoneNumber: res.phoneNumber ?? payload.phoneNumber ?? formData.phone,
+        phone: res.phoneNumber ?? payload.phoneNumber ?? formData.phone,
+        avatarUrl: res.avatarUrl ?? payload.avatarUrl ?? formData.avatarUrl ?? "",
+        birthDate: formData.birthDate || user?.birthDate || "",
+      };
+
+      skipCloseResetRef.current = true;
+      localStorage.setItem("currentUser", JSON.stringify(updatedUser));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("user-profile-updated"));
+      }
+      setUser(updatedUser);
+      setFormData((prev) => ({
+        ...prev,
+        fullName: updatedUser.fullName || prev.fullName,
+        phone: updatedUser.phoneNumber || updatedUser.phone || prev.phone,
+        avatarUrl: updatedUser.avatarUrl || prev.avatarUrl,
+      }));
+      setAvatarPreview(updatedUser.avatarUrl || "");
+      setAvatarUrlInput(updatedUser.avatarUrl || "");
+      setIsEditOpen(false);
+      toast.success("Cập nhật thành công!");
+    } catch (err) {
+      const message =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Cập nhật thất bại. Vui lòng thử lại.";
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancel = () => {
+    const avatarUrl = getAvatarUrl(user);
+    setFormData({
+      fullName: user?.fullName || "",
+      phone: user?.phoneNumber || user?.phone || "",
+      address: user?.address || "",
+      birthDate: user?.birthDate || "",
+      avatarUrl,
+    });
+    setAvatarPreview(avatarUrl);
+    setAvatarUrlInput(avatarUrl);
+    setIsEditOpen(false);
+  };
+
   const handleChangePassword = () => {
-    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
-      alert("Vui lòng điền đầy đủ thông tin!");
+    if (
+      !passwordData.currentPassword ||
+      !passwordData.newPassword ||
+      !passwordData.confirmPassword
+    ) {
+      toast.error("Vui lòng điền đầy đủ thông tin!");
       return;
     }
-    
+
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("Mật khẩu mới không khớp!");
+      toast.error("Mật khẩu mới không khớp!");
       return;
     }
-    
-    if (passwordData.newPassword.length < 5) {
-      alert("Mật khẩu phải có ít nhất 5 ký tự!");
+
+    if (passwordData.newPassword.length < 6) {
+      toast.error("Mật khẩu phải có ít nhất 6 ký tự!");
       return;
     }
-    
-    alert("Đã đổi mật khẩu thành công!");
-    setPasswordData({
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: ""
-    });
+
+    setIsConfirmChangeOpen(true);
   };
-  
+
+  const handleConfirmChangePassword = async () => {
+    setIsChangingPassword(true);
+    try {
+      const token = localStorage.getItem("authToken");
+      const payload = {
+        oldPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+        confirmPassword: passwordData.confirmPassword,
+      };
+      const res = await changePassword(payload, token);
+      setIsConfirmChangeOpen(false);
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      toast.success(res?.message || "Đổi mật khẩu thành công!");
+    } catch (err) {
+      toast.error("Mật khẩu hiện không chính xác");
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-500 text-white"><CheckCircle className="w-3 h-3 mr-1" /> Hoàn thành</Badge>;
+        return (
+          <Badge className="bg-green-500 text-white">
+            <CheckCircle className="w-3 h-3 mr-1" /> Hoàn thành
+          </Badge>
+        );
       case "active":
-        return <Badge className="bg-blue-500 text-white"><Clock className="w-3 h-3 mr-1" /> Đang thuê</Badge>;
+        return (
+          <Badge className="bg-blue-500 text-white">
+            <Clock className="w-3 h-3 mr-1" /> Đang thuê
+          </Badge>
+        );
       case "pending":
-        return <Badge className="bg-yellow-500 text-white"><Clock className="w-3 h-3 mr-1" /> Chờ xử lý</Badge>;
+        return (
+          <Badge className="bg-yellow-500 text-white">
+            <Clock className="w-3 h-3 mr-1" /> Chờ xử lý
+          </Badge>
+        );
       case "cancelled":
-        return <Badge className="bg-red-500 text-white"><XCircle className="w-3 h-3 mr-1" /> Đã hủy</Badge>;
+        return (
+          <Badge className="bg-red-500 text-white">
+            <XCircle className="w-3 h-3 mr-1" /> Đã hủy
+          </Badge>
+        );
       default:
         return null;
     }
   };
-  
+
   const switchTab = (tab) => {
     setSearchParams({ tab });
-    setIsEditing(false);
+    if (isEditOpen) handleCancel();
   };
-  
+
   const handleRemoveFromWishlist = (itemId) => {
-    setWishlist(wishlist.filter(item => item.id !== itemId));
+    setWishlist(wishlist.filter((item) => item.id !== itemId));
   };
-  
+
   if (!user) return null;
+  const avatarUrl = getAvatarUrl(user);
+  const avatarLetter = (user.fullName || "U").charAt(0).toUpperCase();
+  const editAvatarLetter = (formData.fullName || user.fullName || "U")
+    .charAt(0)
+    .toUpperCase();
 
   return (
     <>
-      <div className="min-h-screen bg-gradient-to-b from-[#fdfcfb] via-white to-[#fef9f3] pt-20">
+      <div className="min-h-screen bg-gradient-to-b from-[#fdfcfb] via-white to-[#fef9f3] pt-52 md:pt-60">
         {/* Main Content */}
         <div className="max-w-6xl mx-auto px-6 lg:px-8 py-16">
           {/* Avatar Section */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="text-center mb-12"
+            className="flex flex-col items-center text-center gap-4 mb-10"
           >
-            <div className="relative inline-block mb-6">
+            <div className="flex items-center gap-4">
               {/* Avatar Container with Gradient Ring */}
-              <div className="w-40 h-40 rounded-full bg-gradient-to-tr from-[#c1272d] via-[#d4af37] to-[#c1272d] p-1.5 shadow-2xl">
+              <div className="w-36 h-36 rounded-full bg-gradient-to-tr from-[#c1272d] via-[#d4af37] to-[#c1272d] p-1.5 shadow-2xl">
                 <div className="w-full h-full rounded-full bg-white p-1.5">
                   <div className="w-full h-full rounded-full bg-gradient-to-br from-[#c1272d] to-[#d4af37] flex items-center justify-center">
-                    <span className="text-white text-5xl font-display">
-                      {user.fullName.charAt(0)}
-                    </span>
+                    <span className="text-white text-5xl font-display"></span>
                   </div>
                 </div>
               </div>
-              
+
               {/* Camera Button */}
-              <button className="absolute bottom-2 right-2 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center hover:bg-gray-50 transition-all border-2 border-gray-100 group">
+              <button
+                className="w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center hover:bg-gray-50 transition-all border-2 border-gray-100 group"
+                aria-label="Cập nhật ảnh đại diện"
+              >
                 <Camera className="w-5 h-5 text-gray-600 group-hover:text-[#c1272d] transition-colors" />
               </button>
             </div>
-            
-            {/* User Info */}
-            <h2 className="font-display text-3xl text-[#1a1a1a] mb-2">{user.fullName}</h2>
-            <p className="text-gray-500 mb-3">{user.email}</p>
-            <Badge className="bg-gradient-to-r from-[#d4af37] to-[#c1272d] text-white border-none px-4 py-1 text-sm">
-              Thành viên VIP
-            </Badge>
           </motion.div>
 
           {/* Tabs Navigation */}
@@ -230,66 +446,64 @@ export function ProfilePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="mb-8"
+            className="mb-6"
           >
-            <div className="flex justify-center border-b border-gray-200">
-              <div className="flex gap-1 -mb-px">
-                <button
-                  onClick={() => switchTab("info")}
-                  className={`px-8 py-4 font-medium transition-all relative group ${
-                    activeTab === "info"
-                      ? "text-[#c1272d] border-b-2 border-[#c1272d]"
-                      : "text-gray-600 hover:text-[#c1272d]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Thông tin
-                  </span>
-                </button>
-                
-                <button
-                  onClick={() => switchTab("orders")}
-                  className={`px-8 py-4 font-medium transition-all relative group ${
-                    activeTab === "orders"
-                      ? "text-[#c1272d] border-b-2 border-[#c1272d]"
-                      : "text-gray-600 hover:text-[#c1272d]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Package className="w-5 h-5" />
-                    Đơn thuê
-                  </span>
-                </button>
-                
-                <button
-                  onClick={() => switchTab("wishlist")}
-                  className={`px-8 py-4 font-medium transition-all relative group ${
-                    activeTab === "wishlist"
-                      ? "text-[#c1272d] border-b-2 border-[#c1272d]"
-                      : "text-gray-600 hover:text-[#c1272d]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Heart className="w-5 h-5" />
-                    Yêu thích
-                  </span>
-                </button>
-                
-                <button
-                  onClick={() => switchTab("settings")}
-                  className={`px-8 py-4 font-medium transition-all relative group ${
-                    activeTab === "settings"
-                      ? "text-[#c1272d] border-b-2 border-[#c1272d]"
-                      : "text-gray-600 hover:text-[#c1272d]"
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <Settings className="w-5 h-5" />
-                    Cài đặt
-                  </span>
-                </button>
-              </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <button
+                onClick={() => switchTab("info")}
+                className={`px-6 py-4 font-medium transition-all border rounded-xl ${
+                  activeTab === "info"
+                    ? "border-[#c1272d]/40 text-[#c1272d] bg-white shadow-sm"
+                    : "border-gray-200 text-gray-600 bg-[#fdfcfb] hover:border-[#c1272d]/30 hover:text-[#c1272d]"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <User className="w-5 h-5" />
+                  Thông tin
+                </span>
+              </button>
+
+              <button
+                onClick={() => switchTab("orders")}
+                className={`px-6 py-4 font-medium transition-all border rounded-xl ${
+                  activeTab === "orders"
+                    ? "border-[#c1272d]/40 text-[#c1272d] bg-white shadow-sm"
+                    : "border-gray-200 text-gray-600 bg-[#fdfcfb] hover:border-[#c1272d]/30 hover:text-[#c1272d]"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Đơn thuê
+                </span>
+              </button>
+
+              <button
+                onClick={() => switchTab("wishlist")}
+                className={`px-6 py-4 font-medium transition-all border rounded-xl ${
+                  activeTab === "wishlist"
+                    ? "border-[#c1272d]/40 text-[#c1272d] bg-white shadow-sm"
+                    : "border-gray-200 text-gray-600 bg-[#fdfcfb] hover:border-[#c1272d]/30 hover:text-[#c1272d]"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Heart className="w-5 h-5" />
+                  Yêu thích
+                </span>
+              </button>
+
+              <button
+                onClick={() => switchTab("settings")}
+                className={`px-6 py-4 font-medium transition-all border rounded-xl ${
+                  activeTab === "settings"
+                    ? "border-[#c1272d]/40 text-[#c1272d] bg-white shadow-sm"
+                    : "border-gray-200 text-gray-600 bg-[#fdfcfb] hover:border-[#c1272d]/30 hover:text-[#c1272d]"
+                }`}
+              >
+                <span className="flex items-center justify-center gap-2">
+                  <Settings className="w-5 h-5" />
+                  Cài đặt
+                </span>
+              </button>
             </div>
           </motion.div>
 
@@ -299,128 +513,306 @@ export function ProfilePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="bg-white rounded-2xl shadow-luxury p-8 min-h-[500px]"
+            className="bg-white border border-gray-200 rounded-2xl shadow-sm p-8 min-h-[520px]"
           >
             {/* Thông tin Tab */}
             {activeTab === "info" && (
               <div>
-                <div className="flex justify-between items-center mb-8">
-                  <h3 className="text-2xl font-display text-[#1a1a1a]">Thông tin cá nhân</h3>
-                  {!isEditing ? (
-                    <Button
-                      onClick={() => setIsEditing(true)}
-                      className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white hover:shadow-lg"
-                    >
-                      <Edit2 className="w-4 h-4 mr-2" />
-                      Chỉnh sửa
-                    </Button>
-                  ) : (
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={handleSave}
-                        className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white hover:shadow-lg"
-                      >
-                        <Save className="w-4 h-4 mr-2" />
-                        Lưu
-                      </Button>
-                      <Button
-                        onClick={handleCancel}
-                        variant="outline"
-                        className="border-gray-300"
-                      >
-                        <X className="w-4 h-4 mr-2" />
-                        Hủy
-                      </Button>
+                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-dashed border-[#f0e2d7] pb-6 mb-8">
+                  <h3 className="text-2xl font-display text-[#1a1a1a] tracking-tight">
+                    Thông tin cá nhân
+                  </h3>
+                  <Button
+                    onClick={openEditModal}
+                    className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white hover:shadow-lg rounded-full px-6"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Chỉnh sửa
+                  </Button>
+                </div>
+                {(profileLoading || profileError) && (
+                  <div className="mb-6 text-sm">
+                    {profileLoading && (
+                      <span className="text-gray-500">Đang tải thông tin...</span>
+                    )}
+                    {profileError && (
+                      <span className="text-red-600">{profileError}</span>
+                    )}
+                  </div>
+                )}
+
+                <div className="mb-10 rounded-2xl border border-[#f0e2d7] bg-white p-7 shadow-[0_18px_40px_-30px_rgba(15,23,42,0.35)]">
+                  <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#c1272d] via-[#d4af37] to-[#c1272d] p-1 shadow-lg">
+                      <div className="w-full h-full rounded-full bg-white p-1">
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-[#c1272d] to-[#d4af37] flex items-center justify-center overflow-hidden">
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt={user.fullName}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-white text-3xl font-display">
+                              {avatarLetter}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  )}
+                    <div className="space-y-1">
+                      <div className="text-2xl font-semibold text-[#1a1a1a] tracking-tight">
+                        {user.fullName}
+                      </div>
+                      <div className="text-sm text-gray-500">ID: {user.email}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="group space-y-2 rounded-2xl border border-[#f0e2d7] bg-white/90 p-4 shadow-sm transition-shadow hover:shadow-md">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 group-focus-within:text-[#c1272d]">
                       <User className="w-4 h-4 text-[#c1272d]" />
                       Họ và tên
                     </label>
                     <Input
                       value={formData.fullName}
-                      onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                      disabled={!isEditing}
-                      className="h-12 bg-gray-50 border-gray-200"
+                      disabled
+                      className="h-12 bg-white border-[#ead8ca] focus-visible:border-[#c1272d]/40 focus-visible:ring-[#c1272d]/20"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="group space-y-2 rounded-2xl border border-[#f0e2d7] bg-white/90 p-4 shadow-sm transition-shadow hover:shadow-md">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 group-focus-within:text-[#c1272d]">
                       <Mail className="w-4 h-4 text-[#c1272d]" />
                       Email
                     </label>
                     <Input
                       value={user.email}
                       disabled
-                      className="h-12 bg-gray-100 border-gray-200 cursor-not-allowed"
+                      className="h-12 bg-[#f7f4f0] border-[#ead8ca] text-gray-600 cursor-not-allowed"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="group space-y-2 rounded-2xl border border-[#f0e2d7] bg-white/90 p-4 shadow-sm transition-shadow hover:shadow-md">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 group-focus-within:text-[#c1272d]">
                       <Phone className="w-4 h-4 text-[#c1272d]" />
                       Số điện thoại
                     </label>
                     <Input
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      disabled={!isEditing}
-                      className="h-12 bg-gray-50 border-gray-200"
+                      disabled
+                      className="h-12 bg-white border-[#ead8ca] focus-visible:border-[#c1272d]/40 focus-visible:ring-[#c1272d]/20"
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                  <div className="group space-y-2 rounded-2xl border border-[#f0e2d7] bg-white/90 p-4 shadow-sm transition-shadow hover:shadow-md">
+                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2 group-focus-within:text-[#c1272d]">
                       <Calendar className="w-4 h-4 text-[#c1272d]" />
                       Ngày sinh
                     </label>
                     <Input
                       type="date"
                       value={formData.birthDate}
-                      onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                      disabled={!isEditing}
-                      className="h-12 bg-gray-50 border-gray-200"
+                      disabled
+                      className="h-12 bg-white border-[#ead8ca] focus-visible:border-[#c1272d]/40 focus-visible:ring-[#c1272d]/20"
                     />
                   </div>
 
-                  <div className="space-y-2 md:col-span-2">
-                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
-                      <MapPin className="w-4 h-4 text-[#c1272d]" />
-                      Địa chỉ
-                    </label>
-                    <Input
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                      disabled={!isEditing}
-                      className="h-12 bg-gray-50 border-gray-200"
-                    />
-                  </div>
                 </div>
+
+                <Dialog
+                  open={isEditOpen}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      if (skipCloseResetRef.current) {
+                        skipCloseResetRef.current = false;
+                        setIsEditOpen(false);
+                        return;
+                      }
+                      handleCancel();
+                      return;
+                    }
+                    setIsEditOpen(true);
+                  }}
+                >
+                  <DialogContent className="sm:max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Chỉnh sửa thông tin cá nhân</DialogTitle>
+                      <DialogDescription>
+                        Cập nhật hồ sơ và ảnh đại diện của bạn.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6">
+                      <div className="rounded-2xl border border-[#f0e2d7] bg-[#fffaf6] p-4">
+                        <div className="flex flex-col items-center gap-4 sm:flex-row">
+                          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#c1272d] via-[#d4af37] to-[#c1272d] p-1 shadow-lg">
+                            <div className="w-full h-full rounded-full bg-white p-1">
+                              <div className="w-full h-full rounded-full bg-gradient-to-br from-[#c1272d] to-[#d4af37] flex items-center justify-center overflow-hidden">
+                                {avatarPreview ? (
+                                  <img
+                                    src={avatarPreview}
+                                    alt="Ảnh đại diện"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <span className="text-white text-3xl font-display">
+                                    {editAvatarLetter}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="grid w-full gap-3">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">
+                                Tải ảnh từ máy
+                              </label>
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={handleAvatarFileChange}
+                                className="cursor-pointer bg-white border-[#ead8ca]"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium text-gray-700">
+                                Hoặc dán link ảnh
+                              </label>
+                              <Input
+                                type="url"
+                                placeholder="https://..."
+                                value={avatarUrlInput}
+                                onChange={handleAvatarUrlChange}
+                                className="bg-white border-[#ead8ca]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Họ và tên
+                          </label>
+                          <Input
+                            value={formData.fullName}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                fullName: e.target.value,
+                              })
+                            }
+                            className="h-12 bg-white border-[#ead8ca]"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Email
+                          </label>
+                          <Input
+                            value={user.email}
+                            disabled
+                            className="h-12 bg-[#f7f4f0] border-[#ead8ca] text-gray-600 cursor-not-allowed"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Số điện thoại
+                          </label>
+                          <Input
+                            value={formData.phone}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                phone: e.target.value,
+                              })
+                            }
+                            className="h-12 bg-white border-[#ead8ca]"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-gray-700">
+                            Ngày sinh
+                          </label>
+                          <Input
+                            type="date"
+                            value={formData.birthDate}
+                            onChange={(e) =>
+                              setFormData({
+                                ...formData,
+                                birthDate: e.target.value,
+                              })
+                            }
+                            className="h-12 bg-white border-[#ead8ca]"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={handleCancel}
+                        className="border-[#ead8ca] text-[#6b4b4b] hover:bg-[#fff4ee]"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Hủy
+                      </Button>
+                      <Button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white hover:shadow-lg"
+                      >
+                        <Save className="w-4 h-4 mr-2" />
+                        {isSaving ? "Đang lưu..." : "Lưu"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
 
             {/* Đơn thuê Tab */}
             {activeTab === "orders" && (
               <div>
-                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">Đơn thuê của tôi</h3>
-                
+                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">
+                  Đơn thuê của tôi
+                </h3>
+
                 {/* Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b-2 border-gray-200">
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">Sản phẩm</th>
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">Mã đơn</th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">Size</th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">Số ngày thuê</th>
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">Ngày thuê</th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">Trạng thái</th>
-                        <th className="text-right py-4 px-4 font-medium text-gray-700">Tổng tiền</th>
+                        <th className="text-left py-4 px-4 font-medium text-gray-700">
+                          Sản phẩm
+                        </th>
+                        <th className="text-left py-4 px-4 font-medium text-gray-700">
+                          Mã đơn
+                        </th>
+                        <th className="text-center py-4 px-4 font-medium text-gray-700">
+                          Size
+                        </th>
+                        <th className="text-center py-4 px-4 font-medium text-gray-700">
+                          Số ngày thuê
+                        </th>
+                        <th className="text-left py-4 px-4 font-medium text-gray-700">
+                          Ngày thuê
+                        </th>
+                        <th className="text-center py-4 px-4 font-medium text-gray-700">
+                          Trạng thái
+                        </th>
+                        <th className="text-right py-4 px-4 font-medium text-gray-700">
+                          Tổng tiền
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -442,36 +834,36 @@ export function ProfilePage() {
                               </span>
                             </div>
                           </td>
-                          
+
                           {/* Order ID */}
                           <td className="py-4 px-4 text-gray-600">
                             {order.id}
                           </td>
-                          
+
                           {/* Size */}
                           <td className="py-4 px-4 text-center font-medium">
                             {order.size}
                           </td>
-                          
+
                           {/* Rental Days */}
                           <td className="py-4 px-4 text-center">
                             {order.rentalDays} ngày
                           </td>
-                          
+
                           {/* Rental Date */}
                           <td className="py-4 px-4 text-gray-600">
                             {order.rentalDate}
                           </td>
-                          
+
                           {/* Status */}
                           <td className="py-4 px-4 text-center">
                             {getStatusBadge(order.status)}
                           </td>
-                          
+
                           {/* Total Price */}
                           <td className="py-4 px-4 text-right">
                             <span className="font-bold text-[#c1272d]">
-                              {order.totalPrice.toLocaleString('vi-VN')}đ
+                              {order.totalPrice.toLocaleString("vi-VN")}đ
                             </span>
                           </td>
                         </tr>
@@ -479,7 +871,7 @@ export function ProfilePage() {
                     </tbody>
                   </table>
                 </div>
-                
+
                 {/* Empty State */}
                 {orders.length === 0 && (
                   <div className="text-center py-16">
@@ -493,10 +885,12 @@ export function ProfilePage() {
             {/* Yêu thích Tab */}
             {activeTab === "wishlist" && (
               <div>
-                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">Sản phẩm yêu thích</h3>
-                
+                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">
+                  Sản phẩm yêu thích
+                </h3>
+
                 {wishlist.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                     {wishlist.map((item) => (
                       <div
                         key={item.id}
@@ -510,34 +904,36 @@ export function ProfilePage() {
                             alt={item.name}
                             className="w-full h-full object-cover group-hover:scale-[1.08] transition-transform duration-700 ease-out"
                           />
-                          
+
                           {/* Remove Button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveFromWishlist(item.id);
                             }}
-                            className="absolute top-4 right-4 w-10 h-10 bg-white/95 backdrop-blur-sm flex items-center justify-center hover:bg-[#c1272d] hover:text-white transition-all duration-300 group/heart shadow-lg"
+                            className="absolute top-6 right-6 w-11 h-11 bg-white/95 backdrop-blur-sm flex items-center justify-center hover:bg-[#c1272d] hover:text-white transition-all duration-300 group/heart shadow-lg"
                           >
                             <X className="w-5 h-5" />
                           </button>
-                          
+
                           {/* Border Accent */}
                           <div className="absolute inset-0 border-2 border-transparent group-hover:border-[#d4af37]/30 transition-colors duration-500 pointer-events-none" />
                         </div>
 
                         {/* Content */}
-                        <div className="p-5">
-                          <h3 className="text-lg font-display text-[#1a1a1a] mb-2 group-hover:text-[#c1272d] transition-colors duration-300 line-clamp-1">
+                        <div className="p-6">
+                          <h3 className="text-xl font-display text-[#1a1a1a] mb-2 group-hover:text-[#c1272d] transition-colors duration-300 line-clamp-1">
                             {item.name}
                           </h3>
                           <div className="flex items-center justify-between">
-                            <span className="text-xl font-display text-[#c1272d] tracking-tight">
-                              {item.price.toLocaleString('vi-VN')} ₫
+                            <span className="text-2xl font-display text-[#c1272d] tracking-tight">
+                              {item.price.toLocaleString("vi-VN")} ₫
                             </span>
                             <div className="flex items-center gap-1">
                               <Star className="w-4 h-4 fill-[#d4af37] text-[#d4af37]" />
-                              <span className="text-sm font-medium text-gray-600">{item.rating}</span>
+                              <span className="text-sm font-medium text-gray-600">
+                                {item.rating}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -556,15 +952,17 @@ export function ProfilePage() {
             {/* Cài đặt Tab */}
             {activeTab === "settings" && (
               <div>
-                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">C��i đặt tài khoản</h3>
-                
+                <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">
+                  Cài đặt tài khoản
+                </h3>
+
                 <div className="max-w-2xl">
                   <div className="bg-gradient-to-r from-[#c1272d]/5 to-[#d4af37]/5 border border-[#c1272d]/20 rounded-xl p-6 mb-8">
                     <h4 className="font-display text-xl text-[#1a1a1a] mb-4 flex items-center gap-2">
                       <Lock className="w-5 h-5 text-[#c1272d]" />
                       Đổi mật khẩu
                     </h4>
-                    
+
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-gray-700">
@@ -573,7 +971,12 @@ export function ProfilePage() {
                         <Input
                           type="password"
                           value={passwordData.currentPassword}
-                          onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              currentPassword: e.target.value,
+                            })
+                          }
                           className="h-12 bg-white border-gray-200"
                           placeholder="Nhập mật khẩu hiện tại"
                         />
@@ -586,7 +989,12 @@ export function ProfilePage() {
                         <Input
                           type="password"
                           value={passwordData.newPassword}
-                          onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              newPassword: e.target.value,
+                            })
+                          }
                           className="h-12 bg-white border-gray-200"
                           placeholder="Nhập mật khẩu mới"
                         />
@@ -599,7 +1007,12 @@ export function ProfilePage() {
                         <Input
                           type="password"
                           value={passwordData.confirmPassword}
-                          onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                          onChange={(e) =>
+                            setPasswordData({
+                              ...passwordData,
+                              confirmPassword: e.target.value,
+                            })
+                          }
                           className="h-12 bg-white border-gray-200"
                           placeholder="Nhập lại mật khẩu mới"
                         />
@@ -609,8 +1022,38 @@ export function ProfilePage() {
                         onClick={handleChangePassword}
                         className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white hover:shadow-lg w-full h-12"
                       >
-                        Đổi mật kh��u
+                        Đổi mật khẩu
                       </Button>
+
+                      <Dialog
+                        open={isConfirmChangeOpen}
+                        onOpenChange={setIsConfirmChangeOpen}
+                      >
+                        <DialogContent className="sm:max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Xác nhận đổi mật khẩu</DialogTitle>
+                            <DialogDescription>
+                              Bạn chắc chắn muốn đổi mật khẩu cho tài khoản này?
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter>
+                            <Button
+                              variant="outline"
+                              onClick={() => setIsConfirmChangeOpen(false)}
+                              className="border-gray-200"
+                            >
+                              Hủy
+                            </Button>
+                            <Button
+                              onClick={handleConfirmChangePassword}
+                              disabled={isChangingPassword}
+                              className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white"
+                            >
+                              {isChangingPassword ? "Đang xử lý..." : "Đồng ý"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
 
@@ -619,7 +1062,8 @@ export function ProfilePage() {
                       Xóa tài khoản
                     </h4>
                     <p className="text-sm text-red-600 mb-4">
-                      Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn sẽ bị xóa vĩnh viễn.
+                      Hành động này không thể hoàn tác. Tất cả dữ liệu của bạn
+                      sẽ bị xóa vĩnh viễn.
                     </p>
                     <Button
                       variant="outline"
@@ -634,7 +1078,7 @@ export function ProfilePage() {
           </motion.div>
         </div>
       </div>
-      
+
       <Footer />
     </>
   );

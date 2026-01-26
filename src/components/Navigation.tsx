@@ -36,6 +36,7 @@ export function Navigation() {
     const savedUser = localStorage.getItem("currentUser");
     return savedUser ? JSON.parse(savedUser) : null;
   });
+  const [avatarError, setAvatarError] = useState(false);
   
   const handleLogin = (userData) => {
     setUser(userData);
@@ -46,6 +47,24 @@ export function Navigation() {
     localStorage.removeItem("currentUser");
     navigate("/");
   };
+
+  const avatarUrl = user?.avatarUrl || user?.avatar || "";
+
+  useEffect(() => {
+    setAvatarError(false);
+  }, [avatarUrl]);
+
+  useEffect(() => {
+    const handleProfileUpdated = () => {
+      const savedUser = localStorage.getItem("currentUser");
+      setUser(savedUser ? JSON.parse(savedUser) : null);
+    };
+
+    window.addEventListener("user-profile-updated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("user-profile-updated", handleProfileUpdated);
+    };
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -245,10 +264,19 @@ export function Navigation() {
                   <div className="relative">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#c1272d] via-[#d4af37] to-[#c1272d] p-0.5">
                       <div className="w-full h-full rounded-full bg-white p-0.5">
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-[#c1272d] to-[#d4af37] flex items-center justify-center">
-                          <span className="text-white text-sm font-semibold">
-                            {user?.fullName?.charAt(0) || "U"}
-                          </span>
+                        <div className="w-full h-full rounded-full bg-gradient-to-br from-[#c1272d] to-[#d4af37] flex items-center justify-center overflow-hidden">
+                          {avatarUrl && !avatarError ? (
+                            <img
+                              src={avatarUrl}
+                              alt={user?.fullName || "User"}
+                              className="w-full h-full object-cover"
+                              onError={() => setAvatarError(true)}
+                            />
+                          ) : (
+                            <span className="text-white text-sm font-semibold">
+                              {user?.fullName?.charAt(0) || "U"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -261,10 +289,19 @@ export function Navigation() {
                   <div className="flex items-center gap-3">
                     {/* Large Avatar */}
                     <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm p-0.5">
-                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center">
-                        <span className="text-[#c1272d] text-xl font-display font-semibold">
-                          {user?.fullName?.charAt(0) || "U"}
-                        </span>
+                      <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                        {avatarUrl && !avatarError ? (
+                          <img
+                            src={avatarUrl}
+                            alt={user?.fullName || "User"}
+                            className="w-full h-full object-cover"
+                            onError={() => setAvatarError(true)}
+                          />
+                        ) : (
+                          <span className="text-[#c1272d] text-xl font-display font-semibold">
+                            {user?.fullName?.charAt(0) || "U"}
+                          </span>
+                        )}
                       </div>
                     </div>
                     

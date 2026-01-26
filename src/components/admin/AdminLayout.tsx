@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { AdminSidebar } from "./AdminSidebar";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
 import { Bell, Search, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
@@ -11,18 +12,29 @@ import {
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
 import { Input } from "../ui/input";
+import { logout as logoutAction } from "../../features/auth/authSlice";
 
 export function AdminLayout({ children }: { children: ReactNode }) {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   // Get admin user from localStorage
   const user = JSON.parse(localStorage.getItem("currentUser") || '{"fullName":"Admin User","email":"admin@gmail.com","role":"admin"}');
 
+  const handleLogout = () => {
+    dispatch(logoutAction());
+    navigate("/");
+  };
+
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="relative h-screen overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Sidebar */}
       <AdminSidebar />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div
+        className="flex h-screen flex-col min-w-0 overflow-x-hidden"
+        style={{ paddingLeft: "18rem" }}
+      >
         {/* Top Bar */}
         <header className="bg-white border-b border-gray-200 px-8 py-4 shadow-sm sticky top-0 z-10">
           <div className="flex items-center justify-between">
@@ -68,7 +80,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                   <DropdownMenuItem>Cài đặt</DropdownMenuItem>
                   <DropdownMenuItem>Hỗ trợ</DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">Đăng xuất</DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">Đăng xuất</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -76,17 +88,17 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-8">
-          {children}
-        </main>
+        <main className="flex-1 min-h-0 overflow-y-auto">
+          <div className="p-8">{children}</div>
 
-        {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 px-8 py-4">
-          <div className="flex items-center justify-between text-sm text-gray-600">
-            <p>© 2024 Sắc Việt. All rights reserved.</p>
-            <p>Version 1.0.0</p>
-          </div>
-        </footer>
+          {/* Footer */}
+          <footer className="bg-white border-t border-gray-200 px-8 py-4">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <p>© 2024 Sắc Việt. All rights reserved.</p>
+              <p>Version 1.0.0</p>
+            </div>
+          </footer>
+        </main>
       </div>
     </div>
   );
