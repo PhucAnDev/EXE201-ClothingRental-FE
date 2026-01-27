@@ -1,11 +1,13 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { Footer } from "../components/Footer";
 import { Heart, ShoppingBag, Filter, Search } from "lucide-react";
 import { Input } from "../components/ui/input";
+import type { AppDispatch, RootState } from "../store";
 import {
   Select,
   SelectContent,
@@ -19,6 +21,10 @@ import {
   type OutfitImageItem,
   type OutfitItem,
 } from "../features/outfit/outfitService";
+import {
+  addToWishlist,
+  clearWishlistStatus,
+} from "../features/wishlist/wishlistSlice";
 
 const categories = [
   { id: "all", label: "Tất cả" },
@@ -114,6 +120,9 @@ const selectPrimaryImage = (images: OutfitImageItem[]) => {
 
 export function CollectionPage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch<AppDispatch>();
+  const { status: wishlistStatus, message: wishlistMessage, addingId } =
+    useSelector((state: RootState) => state.wishlist);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedStyle, setSelectedStyle] = useState("all");
@@ -179,6 +188,16 @@ export function CollectionPage() {
       isMounted = false;
     };
   }, []);
+  useEffect(() => {
+    if (wishlistStatus === "succeeded") {
+      alert(wishlistMessage || "Đã thêm outfit vào danh sách yêu thích của bạn.");
+      dispatch(clearWishlistStatus());
+    }
+    if (wishlistStatus === "failed") {
+      alert("Outfit đã được thêm vào danh sách yêu thích.");
+      dispatch(clearWishlistStatus());
+    }
+  }, [dispatch, wishlistMessage, wishlistStatus]);
 
   const collectionItems = useMemo(() => {
     return outfits.map((outfit, index) => {
@@ -215,18 +234,21 @@ export function CollectionPage() {
   };
 
   const filteredCollections = collectionItems.filter((item) => {
-    const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = item.name
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase());
     const matchStyle = selectedStyle === "all" || item.style === selectedStyle;
     const matchColor = selectedColor === "all" || item.color === selectedColor;
-    
+
     let matchPrice = true;
     if (selectedPriceRange !== "all") {
-      const range = priceRanges.find(r => r.id === selectedPriceRange);
+      const range = priceRanges.find((r) => r.id === selectedPriceRange);
       if (range && range.min !== undefined && range.max !== undefined) {
-        matchPrice = item.priceNumeric >= range.min && item.priceNumeric < range.max;
+        matchPrice =
+          item.priceNumeric >= range.min && item.priceNumeric < range.max;
       }
     }
-    
+
     return matchSearch && matchStyle && matchColor && matchPrice;
   });
 
@@ -240,21 +262,38 @@ export function CollectionPage() {
       <section className="relative pt-32 pb-20 px-8 lg:px-12 bg-gradient-to-br from-[#1a1a1a] via-[#2d1a1a] to-black overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, rgba(212,175,55,0.3) 0%, transparent 70%)' }} />
-          <div className="absolute bottom-20 left-20 w-[500px] h-[500px] rounded-full blur-3xl" style={{ background: 'radial-gradient(circle, rgba(193,39,45,0.3) 0%, transparent 70%)' }} />
+          <div
+            className="absolute top-20 right-20 w-96 h-96 rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(212,175,55,0.3) 0%, transparent 70%)",
+            }}
+          />
+          <div
+            className="absolute bottom-20 left-20 w-[500px] h-[500px] rounded-full blur-3xl"
+            style={{
+              background:
+                "radial-gradient(circle, rgba(193,39,45,0.3) 0%, transparent 70%)",
+            }}
+          />
         </div>
 
         {/* Vietnamese Pattern Overlay */}
-        <div className="absolute inset-0 opacity-[0.03]" style={{ 
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")` 
-        }} />
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23d4af37' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        />
 
         <div className="relative z-10 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             {/* Left: Text Content */}
             <div>
               <div className="inline-block mb-6">
-                <span className="text-[#d4af37] uppercase tracking-[0.3em] text-sm">Collection</span>
+                <span className="text-[#d4af37] uppercase tracking-[0.3em] text-sm">
+                  Collection
+                </span>
                 <div className="h-px w-full bg-gradient-to-r from-[#d4af37] to-transparent mt-2" />
               </div>
               <h1 className="text-6xl lg:text-7xl font-display text-white mb-8 leading-[1.1] tracking-tight">
@@ -262,20 +301,31 @@ export function CollectionPage() {
                 <br />
                 <span className="text-gradient-gold italic">Trang Phục</span>
                 <br />
-                <span className="text-5xl lg:text-6xl text-white/90">Truyền Thống</span>
+                <span className="text-5xl lg:text-6xl text-white/90">
+                  Truyền Thống
+                </span>
               </h1>
               <p className="text-white/70 text-lg lg:text-xl leading-relaxed max-w-xl">
-                Khám phá vẻ đẹp bản sắc Việt qua từng chi tiết tinh xảo của trang phục truyền thống. 
-                Mỗi bộ trang phục là một câu chuyện văn hóa đậm chất nghệ thuật.
+                Khám phá vẻ đẹp bản sắc Việt qua từng chi tiết tinh xảo của
+                trang phục truyền thống. Mỗi bộ trang phục là một câu chuyện văn
+                hóa đậm chất nghệ thuật.
               </p>
               <div className="mt-10 flex items-center gap-12">
                 <div>
-                  <div className="text-4xl font-display text-gradient-gold mb-2">500+</div>
-                  <p className="text-white/50 text-sm uppercase tracking-wider">Thiết Kế</p>
+                  <div className="text-4xl font-display text-gradient-gold mb-2">
+                    500+
+                  </div>
+                  <p className="text-white/50 text-sm uppercase tracking-wider">
+                    Thiết Kế
+                  </p>
                 </div>
                 <div>
-                  <div className="text-4xl font-display text-gradient-gold mb-2">18</div>
-                  <p className="text-white/50 text-sm uppercase tracking-wider">Danh Mục</p>
+                  <div className="text-4xl font-display text-gradient-gold mb-2">
+                    18
+                  </div>
+                  <p className="text-white/50 text-sm uppercase tracking-wider">
+                    Danh Mục
+                  </p>
                 </div>
               </div>
             </div>
@@ -283,11 +333,11 @@ export function CollectionPage() {
             {/* Right: Image Grid */}
             <div className="grid grid-cols-2 gap-4">
               {collectionItems.slice(0, 4).map((item, index) => (
-                <div 
-                  key={item.id} 
+                <div
+                  key={item.id}
                   className="relative aspect-square overflow-hidden bg-[#f5f5f0] group cursor-pointer"
                   style={{
-                    animationDelay: `${index * 0.1}s`
+                    animationDelay: `${index * 0.1}s`,
                   }}
                 >
                   <ImageWithFallback
@@ -344,8 +394,8 @@ export function CollectionPage() {
                   <SelectItem key={color.id} value={color.id}>
                     <div className="flex items-center gap-2">
                       {color.hex && (
-                        <div 
-                          className="w-4 h-4 rounded-full border border-gray-300" 
+                        <div
+                          className="w-4 h-4 rounded-full border border-gray-300"
                           style={{ backgroundColor: color.hex }}
                         />
                       )}
@@ -357,7 +407,10 @@ export function CollectionPage() {
             </Select>
 
             {/* Price Range Filter */}
-            <Select value={selectedPriceRange} onValueChange={setSelectedPriceRange}>
+            <Select
+              value={selectedPriceRange}
+              onValueChange={setSelectedPriceRange}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Lọc theo giá (Tất cả)" />
               </SelectTrigger>
@@ -394,9 +447,7 @@ export function CollectionPage() {
               Đang tải danh sách trang phục...
             </p>
           )}
-          {error && (
-            <p className="text-sm text-red-600 mb-6">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600 mb-6">{error}</p>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {displayedCollections.map((item) => (
@@ -411,7 +462,7 @@ export function CollectionPage() {
                     alt={item.name}
                     className="w-full h-full object-cover group-hover:scale-[1.08] transition-transform duration-700 ease-out"
                   />
-                  
+
                   {/* Badge */}
                   {item.tag && (
                     <Badge className="absolute top-6 left-6 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white border-none shadow-gold uppercase tracking-wider text-xs">
@@ -420,29 +471,41 @@ export function CollectionPage() {
                   )}
 
                   {/* Favorite Button */}
-                  <button className="absolute top-6 right-6 w-11 h-11 bg-white/95 backdrop-blur-sm flex items-center justify-center hover:bg-[#c1272d] hover:text-white transition-all duration-300 group/heart">
-                    <Heart className="w-5 h-5 group-hover/heart:fill-current" />
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      const parsedId = Number(item.id);
+                      if (!Number.isFinite(parsedId)) return;
+                      dispatch(addToWishlist(parsedId));
+                    }}
+                    disabled={addingId === Number(item.id)}
+                    className="absolute top-6 right-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-700 shadow-lg transition-all duration-300 group/heart hover:bg-[#c1272d] hover:shadow-xl disabled:opacity-70"
+                    aria-label="Thêm vào danh sách yêu thích"
+                    title="Thêm vào danh sách yêu thích"
+                  >
+                    <Heart className="w-5 h-5 text-gray-700 fill-transparent transition-colors group-hover/heart:text-white group-hover/heart:fill-white" />
                   </button>
 
                   {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                     <div className="absolute bottom-6 left-6 right-6 flex gap-3">
-                      <Button 
-                        className="flex-1 bg-white text-[#1a1a1a] hover:bg-[#d4af37] hover:text-white transition-all duration-300 shadow-gold"
+                      <Button
+                        className="pointer-events-auto flex-1 bg-white text-[#1a1a1a] hover:bg-[#d4af37] hover:text-white transition-all duration-300 shadow-gold"
                         onClick={handleRentNow}
                       >
                         <ShoppingBag className="w-4 h-4 mr-2" />
                         Thuê Ngay
                       </Button>
-                      <Button 
-                        className="flex-1 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-gold"
+                      <Button
+                        className="pointer-events-auto flex-1 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-gold"
                         onClick={() => navigate(`/san-pham/${item.id}`)}
                       >
                         Chi Tiết
                       </Button>
                     </div>
                   </div>
-                  
+
                   {/* Border Accent */}
                   <div className="absolute inset-0 border-2 border-transparent group-hover:border-[#d4af37]/30 transition-colors duration-500 pointer-events-none" />
                 </div>
@@ -470,7 +533,7 @@ export function CollectionPage() {
           {hasMore && (
             <div className="flex flex-col items-center mt-20 gap-4">
               <Button
-                onClick={() => setDisplayCount(prev => prev + 8)}
+                onClick={() => setDisplayCount((prev) => prev + 8)}
                 size="lg"
                 className="relative overflow-hidden border-2 border-[#c1272d] bg-transparent text-[#c1272d] hover:text-white px-16 h-14 text-base uppercase tracking-wider group shadow-luxury"
               >
@@ -502,4 +565,3 @@ export function CollectionPage() {
     </div>
   );
 }
-

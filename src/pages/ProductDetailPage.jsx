@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
@@ -25,23 +26,107 @@ import {
   Shirt,
   TrendingUp,
   Award,
+  Upload,
+  X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Footer } from "../components/Footer";
-import { getProductById } from "../utils/mockData";
+import { fetchOutfitDetail } from "../features/outfit/outfitSlice";
+
+const normalizeValue = (value) => String(value ?? "").toLowerCase();
+
+const isAvailableStatus = (status) => {
+  const normalized = normalizeValue(status);
+  return (
+    normalized === "available" ||
+    normalized === "instock" ||
+    normalized === "in_stock"
+  );
+};
+
+const formatAvailability = (status) => {
+  if (!status) return "";
+  return isAvailableStatus(status) ? "Còn hàng" : "Hết hàng";
+};
+
+const isRoyalFormality = (value) => {
+  const normalized = normalizeValue(value);
+  return (
+    normalized.includes("royal") ||
+    normalized.includes("trang trọng") ||
+    normalized.includes("trang trong") ||
+    normalized.includes("cung đình") ||
+    normalized.includes("cung dinh")
+  );
+};
+
+const getColorClass = (value) => {
+  const normalized = normalizeValue(value);
+  if (
+    normalized.includes("red") ||
+    normalized.includes("đỏ") ||
+    normalized.includes("do")
+  ) {
+    return "bg-red-600";
+  }
+  if (
+    normalized.includes("green") ||
+    normalized.includes("xanh lá") ||
+    normalized.includes("xanh la")
+  ) {
+    return "bg-green-600";
+  }
+  if (
+    normalized.includes("blue") ||
+    normalized.includes("xanh dương") ||
+    normalized.includes("xanh duong") ||
+    normalized === "xanh" ||
+    normalized.includes("xanh")
+  ) {
+    return "bg-blue-600";
+  }
+  if (
+    normalized.includes("yellow") ||
+    normalized.includes("vàng") ||
+    normalized.includes("vang")
+  ) {
+    return "bg-yellow-600";
+  }
+  if (
+    normalized.includes("đen") ||
+    normalized.includes("den") ||
+    normalized.includes("black")
+  ) {
+    return "bg-gray-900";
+  }
+  if (
+    normalized.includes("trắng") ||
+    normalized.includes("trang") ||
+    normalized.includes("white")
+  ) {
+    return "bg-gray-100";
+  }
+  return "bg-gray-600";
+};
 
 export function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const { outfit, images, sizes, attributes, loading, error } = useSelector(
+    (state) => state.outfit,
+  );
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
   const [rentalDays, setRentalDays] = useState(1);
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [hasRequested, setHasRequested] = useState(false);
 
   // Review form state
   const [reviewRating, setReviewRating] = useState(0);
   const [reviewComment, setReviewComment] = useState("");
-  const [reviewName, setReviewName] = useState("");
+  const [reviewImages, setReviewImages] = useState([]);
   const [hoverRating, setHoverRating] = useState(0);
   const [userReviews, setUserReviews] = useState([]);
 
@@ -50,10 +135,152 @@ export function ProductDetailPage() {
     window.scrollTo(0, 0);
   }, [id]);
 
-  // Get product data
-  const product = getProductById(id);
+  useEffect(() => {
+    if (!id) return;
+    setHasRequested(true);
+    dispatch(fetchOutfitDetail(id));
+  }, [dispatch, id]);
 
-  if (!product) {
+  useEffect(() => {
+    setSelectedImage(0);
+    setSelectedSize("");
+    setRentalDays(1);
+    setShowSizeChart(false);
+  }, [id]);
+
+  const product = useMemo(() => {
+    const imageList = Array.isArray(images) ? [...images] : [];
+    imageList.sort((a, b) => {
+      const aOrder =
+        typeof a?.sortOrder === "number"
+          ? a.sortOrder
+          : Number.POSITIVE_INFINITY;
+      const bOrder =
+        typeof b?.sortOrder === "number"
+          ? b.sortOrder
+          : Number.POSITIVE_INFINITY;
+      return aOrder - bOrder;
+    });
+    const imageUrls = imageList.map((image) => image?.imageUrl).filter(Boolean);
+
+    if (!imageUrls.length && outfit?.primaryImageUrl) {
+      imageUrls.push(outfit.primaryImageUrl);
+    }
+
+    const sizeList = Array.isArray(sizes) ? sizes : [];
+    const sizeLabels = Array.from(
+      new Set(sizeList.map((size) => size?.sizeLabel).filter(Boolean)),
+    );
+
+    const sizeChart =
+      sizeList.length > 0
+        ? sizeList.reduce((acc, size) => {
+            const label = size?.sizeLabel;
+            if (!label) return acc;
+            acc[label] = {
+              bust: size?.chestMaxCm ? `<= ${size.chestMaxCm}` : "-",
+              waist: size?.waistMaxCm ? `<= ${size.waistMaxCm}` : "-",
+              hip: size?.hipMaxCm ? `<= ${size.hipMaxCm}` : "-",
+              height: "-",
+            };
+            return acc;
+          }, {})
+        : null;
+
+    const tags = [
+      outfit?.type,
+      attributes?.occasion,
+      attributes?.seasonSuitability,
+    ]
+      .filter(Boolean)
+      .slice(0, 3);
+
+    const outfitDetails = attributes
+      ? {
+          material: attributes.material ?? null,
+          silhouette: attributes.silhouette ?? null,
+          formalityLevel: attributes.formalityLevel ?? null,
+          occasion: attributes.occasion ?? null,
+          colorPrimary: attributes.colorPrimary ?? null,
+        }
+      : null;
+
+    const outfitStories =
+      attributes && (attributes.storyTitle || attributes.storyContent)
+        ? [
+            {
+              id: attributes.detailId ?? 1,
+              title: attributes.storyTitle || "Câu chuyện",
+              content: attributes.storyContent || "",
+              culturalOrigin: attributes.culturalOrigin || "",
+            },
+          ]
+        : [];
+
+    const pricePerDay =
+      typeof outfit?.baseRentalPrice === "number"
+        ? outfit.baseRentalPrice
+        : Number(outfit?.baseRentalPrice) || 0;
+
+    const rating =
+      typeof outfit?.averageRating === "number" ? outfit.averageRating : 0;
+    const reviewCount =
+      typeof outfit?.totalReviews === "number" ? outfit.totalReviews : 0;
+
+    return {
+      id: outfit?.outfitId ?? id,
+      name: outfit?.name || "",
+      type: outfit?.type || "",
+      gender: outfit?.gender || "",
+      region: outfit?.region || "",
+      isLimited: Boolean(outfit?.isLimited),
+      availability: formatAvailability(outfit?.status),
+      pricePerDay,
+      rating,
+      reviewCount,
+      tags,
+      images: imageUrls,
+      designer: outfit?.designer || "",
+      description: outfit?.description || "",
+      material: attributes?.material || "",
+      color: attributes?.colorPrimary || "",
+      sizes: sizeLabels,
+      sizeChart,
+      rentalPolicy: null,
+      features: [],
+      details: null,
+      outfitDetails,
+      outfitSizes: sizeList,
+      outfitStories,
+      reviews: [],
+    };
+  }, [attributes, id, images, outfit, sizes]);
+
+  if (loading && !outfit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-display mb-4">Đang tải sản phẩm...</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !outfit) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-display mb-4">Không thể tải sản phẩm</h2>
+          <p className="text-gray-600 mb-6">{String(error)}</p>
+          <Button onClick={() => navigate("/bo-suu-tap")}>
+            Quay lại Bộ sưu tập
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (hasRequested && !loading && !error && (!product || !product.name)) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -69,71 +296,25 @@ export function ProductDetailPage() {
   }
 
   const totalPrice = product.pricePerDay * rentalDays;
-  const getMaxMeasurement = (value) => {
-    if (!value) return "--";
-    const text = String(value);
-    if (!text.includes("-")) return text;
-    const maxValue = text.split("-").pop()?.trim();
-    return maxValue || text;
-  };
-  const getPrimaryColor = (value) => {
-    const normalized = (value || "")
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-    if (normalized.includes("do") || normalized.includes("hong")) return "Red";
-    if (normalized.includes("vang")) return "Yellow";
-    if (normalized.includes("xanh")) return "Blue";
-    return "Gray";
-  };
-  const fallbackStock = [3, 5, 2, 0, 0];
-  const outfitDetails = {
-    silhouette: product.outfitDetails?.silhouette ?? "Dáng suông",
-    formalityLevel:
-      product.outfitDetails?.formalityLevel ??
-      ((product.tags || []).some((tag) => /premium|limited/i.test(tag))
-        ? "Royal"
-        : "Daily"),
-    occasion:
-      product.outfitDetails?.occasion ??
-      ((product.tags || []).length
-        ? product.tags.join(", ")
-        : "Sự kiện truyền thống"),
-    colorPrimary:
-      product.outfitDetails?.colorPrimary ?? getPrimaryColor(product.color),
-  };
-  const outfitSizes =
-    product.outfitSizes && product.outfitSizes.length
-      ? product.outfitSizes
-      : Object.entries(product.sizeChart || {}).map(
-          ([sizeLabel, measurements], index) => {
-            const stockQuantity =
-              fallbackStock[index] ?? Math.max(0, 3 - index);
-            return {
-              sizeLabel,
-              chestMaxCm: getMaxMeasurement(measurements?.bust),
-              waistMaxCm: getMaxMeasurement(measurements?.waist),
-              hipMaxCm: getMaxMeasurement(measurements?.hip),
-              stockQuantity,
-              status: stockQuantity > 0 ? "InStock" : "OutOfStock",
-            };
-          },
-        );
-  const hasOutfitDetails = Boolean(outfitDetails);
-  const hasOutfitSizes = outfitSizes.length > 0;
+  const activeImage = product.images[selectedImage] || product.images[0] || "";
+  const rentalPolicy = product.rentalPolicy;
+  const minRentalDays = rentalPolicy?.minDays ?? 1;
+  const maxRentalDays = rentalPolicy?.maxDays ?? null;
 
   const handleNextImage = () => {
+    if (!product.images.length) return;
     setSelectedImage((prev) => (prev + 1) % product.images.length);
   };
 
   const handlePrevImage = () => {
+    if (!product.images.length) return;
     setSelectedImage(
       (prev) => (prev - 1 + product.images.length) % product.images.length,
     );
   };
 
   const handleRentNow = () => {
-    if (!selectedSize) {
+    if (product.sizes.length > 0 && !selectedSize) {
       alert("Vui lòng chọn size!");
       return;
     }
@@ -146,11 +327,6 @@ export function ProductDetailPage() {
 
   const handleSubmitReview = (e) => {
     e.preventDefault();
-
-    if (!reviewName.trim()) {
-      alert("Vui lòng nhập tên của bạn!");
-      return;
-    }
 
     if (reviewRating === 0) {
       alert("Vui lòng chọn số sao đánh giá!");
@@ -165,22 +341,48 @@ export function ProductDetailPage() {
     // Create new review
     const newReview = {
       id: Date.now(),
-      user: reviewName,
+      user: "Người dùng",
       rating: reviewRating,
       comment: reviewComment,
       date: new Date().toLocaleDateString("vi-VN"),
+      images: reviewImages,
     };
 
     // Add to user reviews
     setUserReviews([newReview, ...userReviews]);
 
     // Reset form
-    setReviewName("");
     setReviewRating(0);
     setReviewComment("");
+    setReviewImages([]);
 
     // Success message
     alert("Cảm ơn bạn đã đánh giá sản phẩm!");
+  };
+
+  // Handle image upload
+  const handleImageUpload = (e) => {
+    const files = Array.from(e.target.files);
+
+    // Limit to 4 images
+    if (reviewImages.length + files.length > 4) {
+      alert("Bạn chỉ có thể tải lên tối đa 4 hình ảnh!");
+      return;
+    }
+
+    // Convert files to data URLs
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReviewImages((prev) => [...prev, reader.result]);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Remove image
+  const handleRemoveImage = (index) => {
+    setReviewImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Combine product reviews and user reviews
@@ -225,7 +427,7 @@ export function ProductDetailPage() {
                 transition={{ duration: 0.5 }}
               >
                 <ImageWithFallback
-                  src={product.images[selectedImage]}
+                  src={activeImage}
                   alt={product.name}
                   className="w-full h-full object-cover"
                 />
@@ -250,30 +452,35 @@ export function ProductDetailPage() {
 
                 {/* Wishlist & Share */}
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <button className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all group">
-                    <Heart className="w-5 h-5 text-gray-900 group-hover:fill-[#c1272d] group-hover:text-[#c1272d] transition-colors" />
+                  <button className="w-10 h-10 bg-white backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-[#c1272d] hover:shadow-xl transition-all group border border-gray-200">
+                    <Heart className="w-5 h-5 text-gray-900 group-hover:fill-white group-hover:text-white transition-colors" />
                   </button>
-                  <button className="w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all">
-                    <Share2 className="w-5 h-5 text-gray-900" />
+                  <button className="w-10 h-10 bg-white backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-[#d4af37] hover:shadow-xl transition-all group border border-gray-200">
+                    <Share2 className="w-5 h-5 text-gray-900 group-hover:text-white transition-colors" />
                   </button>
                 </div>
 
                 {/* Tags */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  {product.tags.map((tag, index) => (
-                    <Badge
-                      key={index}
-                      className="bg-[#d4af37] text-white border-none font-semibold"
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
+                {product.tags.length > 0 && (
+                  <div className="absolute top-4 left-4 flex flex-col gap-2">
+                    {product.tags.map((tag, index) => (
+                      <Badge
+                        key={index}
+                        className="bg-[#d4af37] text-white border-none font-semibold"
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
 
                 {/* Image Counter */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-white text-sm">
-                  {selectedImage + 1} / {product.images.length}
-                </div>
+                {product.images.length > 0 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/50 backdrop-blur px-3 py-1 rounded-full text-white text-sm">
+                    {Math.min(selectedImage + 1, product.images.length)} /{" "}
+                    {product.images.length}
+                  </div>
+                )}
               </motion.div>
             </div>
 
@@ -292,10 +499,14 @@ export function ProductDetailPage() {
                   <span className="text-gray-600">
                     {product.reviewCount} đánh giá
                   </span>
-                  <span className="text-gray-400">·</span>
-                  <span className="text-green-600 font-medium">
-                    {product.availability}
-                  </span>
+                  {product.availability && (
+                    <>
+                      <span className="text-gray-400">·</span>
+                      <span className="text-green-600 font-medium">
+                        {product.availability}
+                      </span>
+                    </>
+                  )}
 
                   {/* Limited Badge */}
                   {product.isLimited && (
@@ -313,15 +524,17 @@ export function ProductDetailPage() {
                   {product.name}
                 </h1>
 
-                <p className="text-lg text-gray-600 mb-4">
-                  Thiết kế bởi{" "}
-                  <span className="font-medium text-[#c1272d]">
-                    {product.designer}
-                  </span>
-                </p>
+                {product.designer && (
+                  <p className="text-lg text-gray-600 mb-4">
+                    Thiết kế bởi{" "}
+                    <span className="font-medium text-[#c1272d]">
+                      {product.designer}
+                    </span>
+                  </p>
+                )}
 
                 {/* Product Classification Info */}
-                {hasOutfitDetails && (
+                {product.outfitDetails && (
                   <div className="flex flex-wrap gap-2">
                     {product.region && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-full text-sm">
@@ -341,15 +554,19 @@ export function ProductDetailPage() {
                         </span>
                       </div>
                     )}
-                    {outfitDetails.formalityLevel && (
+                    {product.outfitDetails.formalityLevel && (
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm">
-                        {outfitDetails.formalityLevel === "Royal" ? (
+                        {isRoyalFormality(
+                          product.outfitDetails.formalityLevel,
+                        ) ? (
                           <Crown className="w-3.5 h-3.5" />
                         ) : (
                           <Sparkles className="w-3.5 h-3.5" />
                         )}
                         <span>
-                          {outfitDetails.formalityLevel === "Royal"
+                          {isRoyalFormality(
+                            product.outfitDetails.formalityLevel,
+                          )
                             ? "Cung Đình"
                             : "Thường Ngày"}
                         </span>
@@ -367,33 +584,40 @@ export function ProductDetailPage() {
                   </span>
                   <span className="text-gray-500">/ngày</span>
                 </div>
-                <p className="text-sm text-gray-600">
-                  Đặt cọc: {product.rentalPolicy.deposit.toLocaleString()}đ •
-                  Phí trễ: {product.rentalPolicy.lateFee.toLocaleString()}đ/ngày
-                </p>
+                {rentalPolicy && (
+                  <p className="text-sm text-gray-600">
+                    Đặt cọc: {rentalPolicy.deposit?.toLocaleString?.() ?? 0}đ •
+                    Phí trễ: {rentalPolicy.lateFee?.toLocaleString?.() ?? 0}
+                    đ/ngày
+                  </p>
+                )}
               </div>
 
               {/* Description */}
-              <div>
-                <h3 className="text-lg font-semibold text-[#1a1a1a] mb-3">
-                  Mô tả
-                </h3>
-                <p className="text-gray-600 leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
+              {product.description && (
+                <div>
+                  <h3 className="text-lg font-semibold text-[#1a1a1a] mb-3">
+                    Mô tả
+                  </h3>
+                  <p className="text-gray-600 leading-relaxed">
+                    {product.description}
+                  </p>
+                </div>
+              )}
 
               {/* Material & Color */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-500 mb-1">Chất liệu</p>
                   <p className="font-medium text-[#1a1a1a]">
-                    {product.material}
+                    {product.material || "Đang cập nhật"}
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-500 mb-1">Màu sắc</p>
-                  <p className="font-medium text-[#1a1a1a]">{product.color}</p>
+                  <p className="font-medium text-[#1a1a1a]">
+                    {product.color || "Đang cập nhật"}
+                  </p>
                 </div>
               </div>
 
@@ -403,32 +627,38 @@ export function ProductDetailPage() {
                   <h3 className="text-lg font-semibold text-[#1a1a1a]">
                     Chọn size
                   </h3>
-                  <button
-                    onClick={() => setShowSizeChart(!showSizeChart)}
-                    className="text-[#c1272d] text-sm font-medium hover:underline flex items-center gap-1"
-                  >
-                    <Ruler className="w-4 h-4" />
-                    Bảng size
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-4 gap-3">
-                  {product.sizes.map((size) => (
+                  {product.sizeChart && (
                     <button
-                      key={size}
-                      onClick={() => setSelectedSize(size)}
-                      className={`py-3 rounded-lg border-2 font-semibold transition-all ${
-                        selectedSize === size
-                          ? "border-[#c1272d] bg-[#c1272d] text-white"
-                          : "border-gray-200 hover:border-[#c1272d]/50"
-                      }`}
+                      onClick={() => setShowSizeChart(!showSizeChart)}
+                      className="text-[#c1272d] text-sm font-medium hover:underline flex items-center gap-1"
                     >
-                      {size}
+                      <Ruler className="w-4 h-4" />
+                      Bảng size
                     </button>
-                  ))}
+                  )}
                 </div>
 
-                {showSizeChart && (
+                {product.sizes.length > 0 ? (
+                  <div className="grid grid-cols-4 gap-3">
+                    {product.sizes.map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setSelectedSize(size)}
+                        className={`py-3 rounded-lg border-2 font-semibold transition-all ${
+                          selectedSize === size
+                            ? "border-[#c1272d] bg-[#c1272d] text-white"
+                            : "border-gray-200 hover:border-[#c1272d]/50"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">Chưa có size phù hợp.</p>
+                )}
+
+                {showSizeChart && product.sizeChart && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -485,8 +715,10 @@ export function ProductDetailPage() {
                 </h3>
                 <div className="flex items-center gap-4">
                   <button
-                    onClick={() => setRentalDays(Math.max(1, rentalDays - 1))}
-                    disabled={rentalDays <= product.rentalPolicy.minDays}
+                    onClick={() =>
+                      setRentalDays(Math.max(minRentalDays, rentalDays - 1))
+                    }
+                    disabled={rentalDays <= minRentalDays}
                     className="w-10 h-10 rounded-lg border-2 border-gray-300 hover:border-[#c1272d] disabled:opacity-50 disabled:hover:border-gray-300 transition-colors"
                   >
                     -
@@ -500,19 +732,25 @@ export function ProductDetailPage() {
                   <button
                     onClick={() =>
                       setRentalDays(
-                        Math.min(product.rentalPolicy.maxDays, rentalDays + 1),
+                        maxRentalDays
+                          ? Math.min(maxRentalDays, rentalDays + 1)
+                          : rentalDays + 1,
                       )
                     }
-                    disabled={rentalDays >= product.rentalPolicy.maxDays}
+                    disabled={
+                      maxRentalDays ? rentalDays >= maxRentalDays : false
+                    }
                     className="w-10 h-10 rounded-lg border-2 border-gray-300 hover:border-[#c1272d] disabled:opacity-50 disabled:hover:border-gray-300 transition-colors"
                   >
                     +
                   </button>
                 </div>
-                <p className="text-sm text-gray-500 text-center mt-3">
-                  Tối thiểu {product.rentalPolicy.minDays} ngày, tối đa{" "}
-                  {product.rentalPolicy.maxDays} ngày
-                </p>
+                {rentalPolicy && (
+                  <p className="text-sm text-gray-500 text-center mt-3">
+                    Tối thiểu {rentalPolicy.minDays} ngày, tối đa{" "}
+                    {rentalPolicy.maxDays} ngày
+                  </p>
+                )}
               </div>
 
               {/* Total Price */}
@@ -545,16 +783,18 @@ export function ProductDetailPage() {
               </div>
 
               {/* Features */}
-              <div className="space-y-3">
-                {product.features.map((feature, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <Check className="w-3 h-3 text-green-600" />
+              {product.features.length > 0 && (
+                <div className="space-y-3">
+                  {product.features.map((feature, index) => (
+                    <div key={index} className="flex items-start gap-3">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <Check className="w-3 h-3 text-green-600" />
+                      </div>
+                      <p className="text-gray-700">{feature}</p>
                     </div>
-                    <p className="text-gray-700">{feature}</p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
 
               {/* Policies */}
               <div className="grid grid-cols-2 gap-4">
@@ -587,7 +827,7 @@ export function ProductDetailPage() {
           {/* Product Details Tabs */}
           <div className="mt-20 border-t border-gray-100 pt-12">
             {/* Outfit Details Section */}
-            {hasOutfitDetails && (
+            {product.outfitDetails && (
               <div className="mb-16">
                 <h3 className="text-3xl font-display text-[#1a1a1a] mb-8 flex items-center gap-2">
                   <Shirt className="w-7 h-7 text-[#d4af37]" />
@@ -600,7 +840,7 @@ export function ProductDetailPage() {
                       <p className="text-sm text-gray-600">Phom Dáng</p>
                     </div>
                     <p className="text-lg text-gray-900 font-semibold">
-                      {outfitDetails.silhouette}
+                      {product.outfitDetails.silhouette || "Đang cập nhật"}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-white p-6 rounded-xl border border-purple-100">
@@ -611,7 +851,7 @@ export function ProductDetailPage() {
                       </p>
                     </div>
                     <p className="text-lg text-gray-900 font-semibold">
-                      {outfitDetails.formalityLevel === "Royal"
+                      {isRoyalFormality(product.outfitDetails.formalityLevel)
                         ? "Cung Đình/Cao Cấp"
                         : "Thường Ngày"}
                     </p>
@@ -622,7 +862,7 @@ export function ProductDetailPage() {
                       <p className="text-sm text-gray-600">Dịp Phù Hợp</p>
                     </div>
                     <p className="text-sm text-gray-900 font-semibold leading-relaxed">
-                      {outfitDetails.occasion}
+                      {product.outfitDetails.occasion || "Đang cập nhật"}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100">
@@ -632,18 +872,12 @@ export function ProductDetailPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-6 h-6 rounded-full border-2 border-gray-300 ${
-                          outfitDetails.colorPrimary === "Red"
-                            ? "bg-red-600"
-                            : outfitDetails.colorPrimary === "Blue"
-                              ? "bg-blue-600"
-                              : outfitDetails.colorPrimary === "Yellow"
-                                ? "bg-yellow-600"
-                                : "bg-gray-600"
-                        }`}
+                        className={`w-6 h-6 rounded-full border-2 border-gray-300 ${getColorClass(
+                          product.outfitDetails.colorPrimary,
+                        )}`}
                       ></div>
                       <p className="text-lg text-gray-900 font-semibold">
-                        {product.color}
+                        {product.color || "Đang cập nhật"}
                       </p>
                     </div>
                   </div>
@@ -652,7 +886,7 @@ export function ProductDetailPage() {
             )}
 
             {/* Size Inventory Section */}
-            {hasOutfitSizes && (
+            {product.outfitSizes && product.outfitSizes.length > 0 && (
               <div className="mb-16">
                 <h3 className="text-3xl font-display text-[#1a1a1a] mb-8 flex items-center gap-2">
                   <Package className="w-7 h-7 text-[#d4af37]" />
@@ -684,7 +918,7 @@ export function ProductDetailPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {outfitSizes.map((sizeData, index) => (
+                        {product.outfitSizes.map((sizeData, index) => (
                           <tr
                             key={index}
                             className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
@@ -719,12 +953,12 @@ export function ProductDetailPage() {
                             <td className="py-4 px-4 text-center">
                               <Badge
                                 className={`${
-                                  sizeData.status === "InStock"
+                                  isAvailableStatus(sizeData.status)
                                     ? "bg-green-100 text-green-700 hover:bg-green-100"
                                     : "bg-red-100 text-red-700 hover:bg-red-100"
                                 } border-none`}
                               >
-                                {sizeData.status === "InStock"
+                                {isAvailableStatus(sizeData.status)
                                   ? "Còn hàng"
                                   : "Hết hàng"}
                               </Badge>
@@ -752,26 +986,32 @@ export function ProductDetailPage() {
                   <Info className="w-6 h-6 text-[#d4af37]" />
                   Chi Tiết Sản Phẩm
                 </h3>
-                <div className="space-y-3">
-                  {Object.entries(product.details).map(([key, value]) => (
-                    <div
-                      key={key}
-                      className="flex justify-between py-3 border-b border-gray-100"
-                    >
-                      <span className="text-gray-600 capitalize">
-                        {key === "fabric" && "Chất liệu"}
-                        {key === "pattern" && "Họa tiết"}
-                        {key === "collar" && "Cổ áo"}
-                        {key === "sleeves" && "Tay áo"}
-                        {key === "length" && "Độ dài"}
-                        {key === "care" && "Bảo quản"}
-                      </span>
-                      <span className="font-medium text-[#1a1a1a] text-right">
-                        {value}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {product.details && Object.keys(product.details).length > 0 ? (
+                  <div className="space-y-3">
+                    {Object.entries(product.details).map(([key, value]) => (
+                      <div
+                        key={key}
+                        className="flex justify-between py-3 border-b border-gray-100"
+                      >
+                        <span className="text-gray-600 capitalize">
+                          {key === "fabric" && "Chất liệu"}
+                          {key === "pattern" && "Họa tiết"}
+                          {key === "collar" && "Cổ áo"}
+                          {key === "sleeves" && "Tay áo"}
+                          {key === "length" && "Độ dài"}
+                          {key === "care" && "Bảo quản"}
+                        </span>
+                        <span className="font-medium text-[#1a1a1a] text-right">
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-500">
+                    Thông tin chi tiết đang được cập nhật.
+                  </p>
+                )}
               </div>
 
               {/* Reviews */}
@@ -791,23 +1031,6 @@ export function ProductDetailPage() {
                   </h4>
 
                   <div className="space-y-4">
-                    {/* Name Input */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tên của bạn
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="text"
-                          value={reviewName}
-                          onChange={(e) => setReviewName(e.target.value)}
-                          placeholder="Nhập tên của bạn..."
-                          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c1272d]/20 focus:border-[#c1272d] transition-all"
-                        />
-                      </div>
-                    </div>
-
                     {/* Star Rating */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -852,6 +1075,54 @@ export function ProductDetailPage() {
                         rows={4}
                         className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#c1272d]/20 focus:border-[#c1272d] transition-all resize-none"
                       />
+
+                      {/* Image Upload Icons - Similar to messenger style */}
+                      <div className="mt-2 flex items-center gap-3">
+                        <label
+                          htmlFor="review-images"
+                          className="cursor-pointer p-2 rounded-lg hover:bg-gray-100 transition-colors group"
+                          title="Thêm hình ảnh"
+                        >
+                          <ImageIcon className="w-5 h-5 text-[#c1272d] group-hover:text-[#8b1e1f]" />
+                        </label>
+
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          id="review-images"
+                        />
+
+                        <span className="text-xs text-gray-500">
+                          {reviewImages.length > 0
+                            ? `${reviewImages.length}/4 ảnh`
+                            : "Thêm hình ảnh (tối đa 4 ảnh)"}
+                        </span>
+                      </div>
+
+                      {/* Image Preview */}
+                      {reviewImages.length > 0 && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {reviewImages.map((image, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={image}
+                                alt={`Review ${index + 1}`}
+                                className="w-20 h-20 object-cover rounded-lg border border-gray-200"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600 transition-colors shadow-md opacity-0 group-hover:opacity-100"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Submit Button */}
@@ -901,6 +1172,18 @@ export function ProductDetailPage() {
                         <p className="text-gray-700 leading-relaxed">
                           {review.comment}
                         </p>
+                        {review.images.length > 0 && (
+                          <div className="mt-4 grid grid-cols-2 gap-4">
+                            {review.images.map((image, index) => (
+                              <img
+                                key={index}
+                                src={image}
+                                alt={`Review ${index + 1}`}
+                                className="w-full h-full object-cover rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        )}
                       </motion.div>
                     ))}
                   </div>

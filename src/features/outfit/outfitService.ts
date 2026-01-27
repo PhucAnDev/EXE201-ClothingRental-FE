@@ -44,6 +44,38 @@ export interface OutfitImageListResponse {
   data?: OutfitImageItem[];
 }
 
+export interface OutfitSizeItem {
+  sizeId?: number;
+  outfitId?: number;
+  sizeLabel?: string;
+  stockQuantity?: number;
+  chestMaxCm?: number;
+  waistMaxCm?: number;
+  hipMaxCm?: number;
+  status?: string;
+  outfitName?: string | null;
+}
+
+export interface OutfitSizeListResponse {
+  success?: boolean;
+  data?: OutfitSizeItem[];
+  count?: number;
+}
+
+export interface OutfitAttributesItem {
+  detailId?: number;
+  outfitId?: number;
+  material?: string | null;
+  silhouette?: string | null;
+  formalityLevel?: string | null;
+  occasion?: string | null;
+  colorPrimary?: string | null;
+  seasonSuitability?: string | null;
+  storyTitle?: string | null;
+  storyContent?: string | null;
+  culturalOrigin?: string | null;
+}
+
 export const getOutfits = async (
   token?: string | null,
 ): Promise<OutfitListResponse> => {
@@ -71,4 +103,24 @@ export const getOutfitImages = async (
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
   return res.data as OutfitImageListResponse;
+};
+
+export const getOutfitSizes = async (
+  outfitId: string | number,
+  token?: string | null,
+): Promise<OutfitSizeListResponse> => {
+  const res = await api.get(`/api/OutfitSize/outfit/${outfitId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return res.data as OutfitSizeListResponse;
+};
+
+export const getOutfitAttributesByOutfitId = async (
+  outfitId: string | number,
+  token?: string | null,
+): Promise<OutfitAttributesItem | null> => {
+  const res = await api.get(`/api/OutfitAttributes/getByOutfitId/${outfitId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  return (res.data as OutfitAttributesItem) ?? null;
 };
