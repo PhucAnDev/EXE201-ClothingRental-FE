@@ -8,6 +8,7 @@ import { Footer } from "../components/Footer";
 import { Heart, ShoppingBag, Filter, Search } from "lucide-react";
 import { Input } from "../components/ui/input";
 import type { AppDispatch, RootState } from "../store";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -121,8 +122,11 @@ const selectPrimaryImage = (images: OutfitImageItem[]) => {
 export function CollectionPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
-  const { status: wishlistStatus, message: wishlistMessage, addingId } =
-    useSelector((state: RootState) => state.wishlist);
+  const {
+    status: wishlistStatus,
+    message: wishlistMessage,
+    addingId,
+  } = useSelector((state: RootState) => state.wishlist);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [selectedStyle, setSelectedStyle] = useState("all");
@@ -190,11 +194,13 @@ export function CollectionPage() {
   }, []);
   useEffect(() => {
     if (wishlistStatus === "succeeded") {
-      alert(wishlistMessage || "Đã thêm outfit vào danh sách yêu thích của bạn.");
+      toast.success(wishlistMessage || "Đã thêm vào danh sách yêu thích!");
       dispatch(clearWishlistStatus());
     }
+
     if (wishlistStatus === "failed") {
-      alert("Outfit đã được thêm vào danh sách yêu thích.");
+      // nếu API trả failed vì "đã tồn tại" thì hiển thị dạng info/warning
+      toast.info("Outfit đã có trong danh sách yêu thích.");
       dispatch(clearWishlistStatus());
     }
   }, [dispatch, wishlistMessage, wishlistStatus]);
@@ -465,7 +471,7 @@ export function CollectionPage() {
 
                   {/* Badge */}
                   {item.tag && (
-                    <Badge className="absolute top-6 left-6 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white border-none shadow-gold uppercase tracking-wider text-xs">
+                    <Badge className="absolute top-6 left-6 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white border-none shadow-gold uppercase tracking-wider text-xs z-20 pointer-events-none">
                       {item.tag}
                     </Badge>
                   )}
@@ -480,30 +486,39 @@ export function CollectionPage() {
                       dispatch(addToWishlist(parsedId));
                     }}
                     disabled={addingId === Number(item.id)}
-                    className="absolute top-6 right-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-700 shadow-lg transition-all duration-300 group/heart hover:bg-[#c1272d] hover:shadow-xl disabled:opacity-70"
+                    className="absolute top-6 right-6 z-30 w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-700 shadow-lg transition-all duration-300 group/heart hover:bg-[#c1272d] hover:shadow-xl disabled:opacity-70 pointer-events-auto"
                     aria-label="Thêm vào danh sách yêu thích"
                     title="Thêm vào danh sách yêu thích"
                   >
                     <Heart className="w-5 h-5 text-gray-700 fill-transparent transition-colors group-hover/heart:text-white group-hover/heart:fill-white" />
                   </button>
 
-                  {/* Overlay */}
-                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute bottom-6 left-6 right-6 flex gap-3">
-                      <Button
-                        className="pointer-events-auto flex-1 bg-white text-[#1a1a1a] hover:bg-[#d4af37] hover:text-white transition-all duration-300 shadow-gold"
-                        onClick={handleRentNow}
-                      >
-                        <ShoppingBag className="w-4 h-4 mr-2" />
-                        Thuê Ngay
-                      </Button>
-                      <Button
-                        className="pointer-events-auto flex-1 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-gold"
-                        onClick={() => navigate(`/san-pham/${item.id}`)}
-                      >
-                        Chi Tiết
-                      </Button>
-                    </div>
+                  {/* Overlay (CHẶN CLICK nếu không pointer-events-none) */}
+                  <div />
+
+                  <div className="absolute bottom-6 left-6 right-6 z-20 flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-auto">
+                    <Button
+                      type="button"
+                      className="flex-1 bg-white text-[#1a1a1a] hover:bg-[#d4af37] hover:text-white transition-all duration-300 shadow-gold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRentNow();
+                      }}
+                    >
+                      <ShoppingBag className="w-4 h-4 mr-2" />
+                      Thuê Ngay
+                    </Button>
+
+                    <Button
+                      type="button"
+                      className="flex-1 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-gold"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/san-pham/${item.id}`);
+                      }}
+                    >
+                      Chi Tiết
+                    </Button>
                   </div>
 
                   {/* Border Accent */}

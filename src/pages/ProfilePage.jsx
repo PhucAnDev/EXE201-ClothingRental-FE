@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
@@ -32,14 +33,27 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import {
   changePassword,
   getUserById,
   updateUserProfile,
 } from "../features/auth/authService";
+import {
+  fetchWishlist,
+  removeFromWishlist,
+} from "../features/wishlist/wishlistSlice";
 
 export function ProfilePage() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const {
+    items: wishlistItems,
+    listStatus,
+    listError,
+    removeStatus,
+    removingId,
+  } = useSelector((state) => state.wishlist);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "info";
 
@@ -127,6 +141,8 @@ export function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [isRemoveOpen, setIsRemoveOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState(null);
 
   // Mock data for orders
   const [orders] = useState([
@@ -170,32 +186,16 @@ export function ProfilePage() {
       returnDate: "2025-01-21",
     },
   ]);
-
-  // Mock data for wishlist
-  const [wishlist, setWishlist] = useState([
-    {
-      id: 1,
-      name: "Áo Dài Trắng Tinh Khôi",
-      price: 1350000,
-      image:
-        "https://images.unsplash.com/photo-1760341682582-afb4681164d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwY3VsdHVyZSUyMGRyZXNzJTIwYmx1ZXxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      rating: 4.8,
-      available: true,
-    },
-    {
-      id: 4,
-      name: "Áo Dải Lụa Xanh Ngọc",
-      price: 1600000,
-      image:
-        "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      rating: 4.9,
-      available: true,
-    },
-  ]);
+  // Wishlist data is loaded from API via Redux
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (activeTab !== "wishlist") return;
+    dispatch(fetchWishlist());
+  }, [activeTab, dispatch]);
 
   useEffect(() => {
     if (!isEditOpen) {
@@ -445,8 +445,27 @@ export function ProfilePage() {
     if (isEditOpen) handleCancel();
   };
 
-  const handleRemoveFromWishlist = (itemId) => {
-    setWishlist(wishlist.filter((item) => item.id !== itemId));
+  const handleRemoveFromWishlist = (item) => {
+    setRemoveTarget(item);
+    setIsRemoveOpen(true);
+  };
+
+  const handleConfirmRemove = async () => {
+    if (!removeTarget?.id) return;
+    try {
+      const payload = await dispatch(
+        removeFromWishlist(Number(removeTarget.id)),
+      ).unwrap();
+      toast.success(
+        payload?.message || "Đã xóa outfit khỏi danh sách yêu thích.",
+      );
+      setIsRemoveOpen(false);
+      setRemoveTarget(null);
+    } catch (err) {
+      toast.error(
+        err?.message || "Không thể xóa outfit khỏi danh sách yêu thích.",
+      );
+    }
   };
 
   if (!user) return null;
@@ -936,9 +955,18 @@ export function ProfilePage() {
                   Sản phẩm yêu thích
                 </h3>
 
-                {wishlist.length > 0 ? (
+                {listStatus === "loading" && (
+                  <p className="text-sm text-gray-500 mb-6">
+                    Đang tải danh sách yêu thích...
+                  </p>
+                )}
+                {listError && (
+                  <p className="text-sm text-red-600 mb-6">{listError}</p>
+                )}
+
+                {wishlistItems.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {wishlist.map((item) => (
+                    {wishlistItems.map((item) => (
                       <div
                         key={item.id}
                         className="group bg-white overflow-hidden transition-all duration-500 hover:shadow-luxury cursor-pointer"
@@ -946,21 +974,28 @@ export function ProfilePage() {
                       >
                         {/* Image */}
                         <div className="relative aspect-[3/4.5] overflow-hidden bg-[#f5f5f0]">
-                          <img
+                          <ImageWithFallback
                             src={item.image}
                             alt={item.name}
                             className="w-full h-full object-cover group-hover:scale-[1.08] transition-transform duration-700 ease-out"
                           />
 
+                          {/* Badge */}
+                          {item.tag && (
+                            <Badge className="absolute top-6 left-6 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white border-none shadow-gold uppercase tracking-wider text-xs">
+                              {item.tag}
+                            </Badge>
+                          )}
+
                           {/* Remove Button */}
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleRemoveFromWishlist(item.id);
+                              handleRemoveFromWishlist(item);
                             }}
-                            className="absolute top-6 right-6 w-11 h-11 bg-white/95 backdrop-blur-sm flex items-center justify-center hover:bg-[#c1272d] hover:text-white transition-all duration-300 group/heart shadow-lg"
+                            className="absolute top-6 right-6 z-20 w-12 h-12 rounded-full bg-white border border-gray-100 flex items-center justify-center text-gray-700 shadow-lg transition-all duration-300 group/heart hover:bg-[#c1272d] hover:shadow-xl"
                           >
-                            <X className="w-5 h-5" />
+                            <X className="w-5 h-5 transition-colors group-hover/heart:text-white" />
                           </button>
 
                           {/* Border Accent */}
@@ -972,6 +1007,9 @@ export function ProfilePage() {
                           <h3 className="text-xl font-display text-[#1a1a1a] mb-2 group-hover:text-[#c1272d] transition-colors duration-300 line-clamp-1">
                             {item.name}
                           </h3>
+                          <p className="text-[#6b6b6b] text-sm mb-4 line-clamp-2 leading-relaxed">
+                            {item.description}
+                          </p>
                           <div className="flex items-center justify-between">
                             <span className="text-2xl font-display text-[#c1272d] tracking-tight">
                               {item.price.toLocaleString("vi-VN")} ₫
@@ -993,10 +1031,59 @@ export function ProfilePage() {
                     <p className="text-gray-500">Chưa có sản phẩm yêu thích</p>
                   </div>
                 )}
+
+                <Dialog
+                  open={isRemoveOpen}
+                  onOpenChange={(open) => {
+                    if (!open) {
+                      setIsRemoveOpen(false);
+                      setRemoveTarget(null);
+                    } else {
+                      setIsRemoveOpen(true);
+                    }
+                  }}
+                >
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Xóa khỏi danh sách yêu thích?</DialogTitle>
+                      <DialogDescription>
+                        Bạn chắc chắn muốn xóa{" "}
+                        <span className="font-medium text-gray-900">
+                          {removeTarget?.name || "outfit này"}
+                        </span>{" "}
+                        khỏi danh sách yêu thích?
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setIsRemoveOpen(false);
+                          setRemoveTarget(null);
+                        }}
+                        className="border-gray-200"
+                      >
+                        Hủy
+                      </Button>
+                      <Button
+                        onClick={handleConfirmRemove}
+                        disabled={
+                          removeStatus === "loading" &&
+                          removingId === Number(removeTarget?.id)
+                        }
+                        className="bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white"
+                      >
+                        {removeStatus === "loading" &&
+                        removingId === Number(removeTarget?.id)
+                          ? "Đang xóa..."
+                          : "Xóa"}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             )}
 
-            {/* Cài đặt Tab */}
             {activeTab === "settings" && (
               <div>
                 <h3 className="text-2xl font-display text-[#1a1a1a] mb-8">
@@ -1130,3 +1217,8 @@ export function ProfilePage() {
     </>
   );
 }
+
+
+
+
+
