@@ -52,7 +52,54 @@ export function ProfilePage() {
     }
     return JSON.parse(savedUser);
   });
-  const userId = user?.userId || user?.id;
+  const parseJwt = (token) => {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    try {
+      const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "=",
+      );
+      return JSON.parse(atob(padded));
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const getUserIdFromToken = () => {
+    if (typeof window === "undefined") return null;
+    const token = localStorage.getItem("authToken");
+    if (!token) return null;
+    const payload = parseJwt(token);
+    if (!payload) return null;
+    return (
+      payload.userId ||
+      payload.id ||
+      payload.nameid ||
+      payload.sub ||
+      payload[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+      ]
+    );
+  };
+
+  const rawUserId = user?.userId || user?.id || getUserIdFromToken();
+  const userId =
+    rawUserId === null || rawUserId === undefined || rawUserId === ""
+      ? null
+      : Number.isNaN(Number(rawUserId))
+        ? rawUserId
+        : Number(rawUserId);
+
+  useEffect(() => {
+    if (!user || user?.userId || user?.id) return;
+    if (!rawUserId) return;
+    const nextUser = { ...user, userId: rawUserId };
+    setUser(nextUser);
+    localStorage.setItem("currentUser", JSON.stringify(nextUser));
+  }, [rawUserId, user]);
 
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);

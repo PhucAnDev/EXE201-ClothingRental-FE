@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { Button } from "../components/ui/button";
@@ -13,7 +13,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select";
-import aoDaiDoImage from "figma:asset/b676f286f6b218c0656933ecaec8526b08057179.png";
+import {
+  getOutfitImages,
+  getOutfits,
+  type OutfitImageItem,
+  type OutfitItem,
+} from "../features/outfit/outfitService";
 
 const categories = [
   { id: "all", label: "Tất cả" },
@@ -53,242 +58,59 @@ const priceRanges = [
   { id: "tren-2", label: "Trên 2.000.000đ", min: 2000000, max: Infinity },
 ];
 
-const collections = [
-  {
-    id: 1,
-    name: "Áo Dài Truyền Thống Đỏ",
-    category: "ao-dai",
-    price: "1,500,000",
-    priceNumeric: 1500000,
-    style: "truyen-thong",
-    color: "do",
-    image: "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo dài lụa tơ tằm cao cấp, thêu hoa sen tinh xảo",
-    tag: "Bán chạy",
-    available: true,
-  },
-  {
-    id: 2,
-    name: "Áo Dài Cách Tân Hồng",
-    category: "ao-dai",
-    price: "1,800,000",
-    priceNumeric: 1800000,
-    style: "hien-dai",
-    color: "hong",
-    image: "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Thiết kế hiện đại kết hợp nét truyền thống",
-    tag: "Mới",
-    available: true,
-  },
-  {
-    id: 3,
-    name: "Áo Tứ Thân Hoàng Kim",
-    category: "ao-tu-than",
-    price: "2,200,000",
-    priceNumeric: 2200000,
-    style: "cong-so",
-    color: "vang",
-    image: aoDaiDoImage,
-    description: "Trang phục cung đình, thêu rồng phượng sang trọng",
-    tag: "Cao cấp",
-    available: true,
-  },
-  {
-    id: 4,
-    name: "Áo Dài Lụa Xanh Ngọc",
-    category: "ao-dai",
-    price: "1,600,000",
-    priceNumeric: 1600000,
-    style: "dao-pho",
-    color: "xanh",
-    image: "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Lụa hà đông mềm mại, in hoa cúc tinh tế",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 5,
-    name: "Áo Nhật Bình Cách Điệu",
-    category: "ao-nhat-binh",
-    price: "1,400,000",
-    priceNumeric: 1400000,
-    style: "ca-tinh",
-    color: "do",
-    image: "https://images.unsplash.com/photo-1737219238630-86eb88e575a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwYXNpYW4lMjBkcmVzcyUyMHJlZHxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Phong cách hoàng gia, chi tiết đính đá lấp lánh",
-    tag: "Bán chạy",
-    available: true,
-  },
-  {
-    id: 6,
-    name: "Áo Dài Trắng Tinh Khôi",
-    category: "ao-dai",
-    price: "1,350,000",
-    priceNumeric: 1350000,
-    style: "toi-gian",
-    color: "trang",
-    image: "https://images.unsplash.com/photo-1760341682582-afb4681164d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwY3VsdHVyZSUyMGRyZXNzJTIwYmx1ZXxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Dành cho học sinh, nữ sinh với vẻ đẹp thanh lịch",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 7,
-    name: "Áo Dài Tím Hoa Lavender",
-    category: "ao-dai",
-    price: "1,750,000",
-    priceNumeric: 1750000,
-    style: "hien-dai",
-    color: "tim",
-    image: "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo dài tím nhạt in họa tiết hoa lavender nhẹ nhàng",
-    tag: "Mới",
-    available: true,
-  },
-  {
-    id: 8,
-    name: "Áo Bà Ba Cách Tân Đen",
-    category: "ao-ba-ba",
-    price: "950,000",
-    priceNumeric: 950000,
-    style: "ca-tinh",
-    color: "den",
-    image: "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Phong cách miền Tây Nam Bộ hiện đại, thoải mái",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 9,
-    name: "Áo Dài Vàng Hoa Mai",
-    category: "ao-dai",
-    price: "1,900,000",
-    priceNumeric: 1900000,
-    style: "truyen-thong",
-    color: "vang",
-    image: aoDaiDoImage,
-    description: "Áo dài vàng thêu hoa mai đón Tết, rực rỡ tươi vui",
-    tag: "Bán chạy",
-    available: true,
-  },
-  {
-    id: 10,
-    name: "Áo Dài Xanh Dương Biển Cả",
-    category: "ao-dai",
-    price: "1,550,000",
-    priceNumeric: 1550000,
-    style: "dao-pho",
-    color: "xanh-duong",
-    image: "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Màu xanh biển đậm, phù hợp dạo phố và sự kiện",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 11,
-    name: "Áo Nhật Bình Hồng Phấn",
-    category: "ao-nhat-binh",
-    price: "2,100,000",
-    priceNumeric: 2100000,
-    style: "cong-so",
-    color: "hong",
-    image: "https://images.unsplash.com/photo-1737219238630-86eb88e575a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwYXNpYW4lMjBkcmVzcyUyMHJlZHxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Trang phục cổ trang, sang trọng và quý phái",
-    tag: "Cao cấp",
-    available: true,
-  },
-  {
-    id: 12,
-    name: "Áo Dài Đỏ Cưới Hỏi",
-    category: "ao-dai",
-    price: "2,500,000",
-    priceNumeric: 2500000,
-    style: "cuoi",
-    color: "do",
-    image: "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo dài cô dâu màu đỏ thêu rồng phượng vàng kim",
-    tag: "Cao cấp",
-    available: true,
-  },
-  {
-    id: 13,
-    name: "Áo Tứ Thân Xanh Lá",
-    category: "ao-tu-than",
-    price: "1,850,000",
-    priceNumeric: 1850000,
-    style: "truyen-thong",
-    color: "xanh",
-    image: "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Trang phục truyền thống phụ nữ Việt xưa",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 14,
-    name: "Áo Dài Hồng Phấn Cưới",
-    category: "ao-dai",
-    price: "2,300,000",
-    priceNumeric: 2300000,
-    style: "cuoi",
-    color: "hong",
-    image: aoDaiDoImage,
-    description: "Áo dài phù dâu màu hồng pastel nhẹ nhàng",
-    tag: "Mới",
-    available: true,
-  },
-  {
-    id: 15,
-    name: "Áo Dài Trắng Học Sinh",
-    category: "ao-dai",
-    price: "1,200,000",
-    priceNumeric: 1200000,
-    style: "toi-gian",
-    color: "trang",
-    image: "https://images.unsplash.com/photo-1760341682582-afb4681164d9?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwY3VsdHVyZSUyMGRyZXNzJTIwYmx1ZXxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo dài trắng truyền thống cho nữ sinh",
-    tag: "Bán chạy",
-    available: true,
-  },
-  {
-    id: 16,
-    name: "Áo Nhật Bình Vàng Kim",
-    category: "ao-nhat-binh",
-    price: "2,400,000",
-    priceNumeric: 2400000,
-    style: "cong-so",
-    color: "vang",
-    image: "https://images.unsplash.com/photo-1737219238630-86eb88e575a5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxlbGVnYW50JTIwYXNpYW4lMjBkcmVzcyUyMHJlZHxlbnwxfHx8fDE3NjE4MDc4NDl8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo hoàng hậu thời xưa, xa hoa lộng lẫy",
-    tag: "Cao cấp",
-    available: true,
-  },
-  {
-    id: 17,
-    name: "Áo Dài Đen Cá Tính",
-    category: "ao-dai",
-    price: "1,650,000",
-    priceNumeric: 1650000,
-    style: "ca-tinh",
-    color: "den",
-    image: "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Áo dài đen hiện đại, phá cách và năng động",
-    tag: "",
-    available: true,
-  },
-  {
-    id: 18,
-    name: "Áo Dài Tím Pastel Dạo Phố",
-    category: "ao-dai",
-    price: "1,450,000",
-    priceNumeric: 1450000,
-    style: "dao-pho",
-    color: "tim",
-    image: "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    description: "Thiết kế trẻ trung, phù hợp đi dạo phố",
-    tag: "Mới",
-    available: true,
-  },
-];
+const normalizeText = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeCategory = (value: string) => {
+  const normalized = normalizeText(value);
+  if (normalized.includes("ao dai")) return "ao-dai";
+  if (normalized.includes("ao tu than")) return "ao-tu-than";
+  if (normalized.includes("ao nhat binh")) return "ao-nhat-binh";
+  if (normalized.includes("ao ba ba")) return "ao-ba-ba";
+  return "all";
+};
+
+const normalizeStyle = (value: string) => {
+  const normalized = normalizeText(value);
+  if (normalized.includes("truyen thong")) return "truyen-thong";
+  if (normalized.includes("hien dai")) return "hien-dai";
+  if (normalized.includes("cong so")) return "cong-so";
+  if (normalized.includes("dao pho")) return "dao-pho";
+  if (normalized.includes("ca tinh")) return "ca-tinh";
+  if (normalized.includes("cuoi")) return "cuoi";
+  if (normalized.includes("toi gian")) return "toi-gian";
+  return "all";
+};
+
+const inferColor = (value: string) => {
+  const normalized = normalizeText(value);
+  if (normalized.includes("xanh duong")) return "xanh-duong";
+  if (normalized.includes("xanh")) return "xanh";
+  if (normalized.includes("do")) return "do";
+  if (normalized.includes("hong")) return "hong";
+  if (normalized.includes("vang")) return "vang";
+  if (normalized.includes("tim")) return "tim";
+  if (normalized.includes("trang")) return "trang";
+  if (normalized.includes("den")) return "den";
+  return "all";
+};
+
+const selectPrimaryImage = (images: OutfitImageItem[]) => {
+  if (!images.length) return "";
+  const sorted = [...images].sort((a, b) => {
+    const aOrder =
+      typeof a.sortOrder === "number" ? a.sortOrder : Number.POSITIVE_INFINITY;
+    const bOrder =
+      typeof b.sortOrder === "number" ? b.sortOrder : Number.POSITIVE_INFINITY;
+    return aOrder - bOrder;
+  });
+  return sorted[0]?.imageUrl || "";
+};
 
 export function CollectionPage() {
   const navigate = useNavigate();
@@ -298,6 +120,93 @@ export function CollectionPage() {
   const [selectedColor, setSelectedColor] = useState("all");
   const [selectedPriceRange, setSelectedPriceRange] = useState("all");
   const [displayCount, setDisplayCount] = useState(8); // Initially show 8 products
+  const [outfits, setOutfits] = useState<OutfitItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchOutfits = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        const token = localStorage.getItem("authToken");
+        const res = await getOutfits(token);
+        const list = Array.isArray(res?.data) ? res.data : [];
+
+        const withImages = await Promise.all(
+          list.map(async (outfit) => {
+            const outfitId = outfit.outfitId;
+            if (!outfitId) {
+              return {
+                ...outfit,
+                primaryImageUrl: outfit.primaryImageUrl ?? "",
+              };
+            }
+
+            try {
+              const imageRes = await getOutfitImages(outfitId, token);
+              const images = Array.isArray(imageRes?.data) ? imageRes.data : [];
+              const primaryImageUrl =
+                selectPrimaryImage(images) || outfit.primaryImageUrl || "";
+              return { ...outfit, primaryImageUrl };
+            } catch (err) {
+              return {
+                ...outfit,
+                primaryImageUrl: outfit.primaryImageUrl ?? "",
+              };
+            }
+          }),
+        );
+
+        if (isMounted) {
+          setOutfits(withImages);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError("Không thể tải danh sách trang phục.");
+        }
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchOutfits();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const collectionItems = useMemo(() => {
+    return outfits.map((outfit, index) => {
+      const rawPrice = outfit.baseRentalPrice;
+      const basePrice =
+        typeof rawPrice === "number" ? rawPrice : Number(rawPrice) || 0;
+      const displayName = outfit.name || "Chưa có tên";
+      const categoryText = outfit.categoryName || displayName;
+      const styleText = outfit.type || outfit.categoryName || "";
+
+      return {
+        id: outfit.outfitId ?? index,
+        name: displayName,
+        category: normalizeCategory(categoryText),
+        price: basePrice.toLocaleString("vi-VN"),
+        priceNumeric: basePrice,
+        style: normalizeStyle(styleText),
+        color: inferColor(displayName),
+        image: outfit.primaryImageUrl || "",
+        description: outfit.description || "",
+        tag: outfit.isLimited ? "Cao cấp" : "",
+        available: outfit.status
+          ? outfit.status.toLowerCase() === "available"
+          : true,
+        createdAt: outfit.createdAt,
+      };
+    });
+  }, [outfits]);
 
   const handleRentNow = () => {
     // TODO: Check if user is logged in via your API
@@ -305,7 +214,7 @@ export function CollectionPage() {
     navigate("/thanh-toan");
   };
 
-  const filteredCollections = collections.filter((item) => {
+  const filteredCollections = collectionItems.filter((item) => {
     const matchSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchStyle = selectedStyle === "all" || item.style === selectedStyle;
     const matchColor = selectedColor === "all" || item.color === selectedColor;
@@ -373,7 +282,7 @@ export function CollectionPage() {
 
             {/* Right: Image Grid */}
             <div className="grid grid-cols-2 gap-4">
-              {collections.slice(0, 4).map((item, index) => (
+              {collectionItems.slice(0, 4).map((item, index) => (
                 <div 
                   key={item.id} 
                   className="relative aspect-square overflow-hidden bg-[#f5f5f0] group cursor-pointer"
@@ -480,6 +389,14 @@ export function CollectionPage() {
       {/* Collection Grid */}
       <section className="py-24 px-8 lg:px-12">
         <div className="max-w-7xl mx-auto">
+          {loading && (
+            <p className="text-sm text-gray-500 mb-6">
+              Đang tải danh sách trang phục...
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-red-600 mb-6">{error}</p>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {displayedCollections.map((item) => (
@@ -567,7 +484,7 @@ export function CollectionPage() {
           )}
 
           {/* Empty State */}
-          {filteredCollections.length === 0 && (
+          {!loading && filteredCollections.length === 0 && (
             <div className="text-center py-32">
               <Filter className="w-20 h-20 text-[#d4af37]/30 mx-auto mb-6" />
               <h3 className="text-3xl font-display text-[#1a1a1a] mb-3">
@@ -585,3 +502,4 @@ export function CollectionPage() {
     </div>
   );
 }
+
