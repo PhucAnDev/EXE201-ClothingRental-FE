@@ -32,7 +32,13 @@ import {
 } from "lucide-react";
 import { motion } from "motion/react";
 import { Footer } from "../components/Footer";
+import { toast } from "sonner";
 import { fetchOutfitDetail } from "../features/outfit/outfitSlice";
+import {
+  addReview,
+  clearAddReviewStatus,
+  fetchReviewsByOutfitId,
+} from "../features/review/reviewSlice";
 
 const normalizeValue = (value) => String(value ?? "").toLowerCase();
 
@@ -117,6 +123,15 @@ export function ProductDetailPage() {
   const { outfit, images, sizes, attributes, loading, error } = useSelector(
     (state) => state.outfit,
   );
+  const {
+    items: reviewItems = [],
+    status: reviewStatus = "idle",
+    error: reviewError = null,
+    count: reviewCount = 0,
+    addStatus: reviewAddStatus = "idle",
+    addError: reviewAddError = null,
+  } = useSelector((state) => state.review || {});
+  const authUser = useSelector((state) => state.auth?.currentUser);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
   const [rentalDays, setRentalDays] = useState(1);
@@ -128,7 +143,51 @@ export function ProductDetailPage() {
   const [reviewComment, setReviewComment] = useState("");
   const [reviewImages, setReviewImages] = useState([]);
   const [hoverRating, setHoverRating] = useState(0);
-  const [userReviews, setUserReviews] = useState([]);
+
+  const parseJwt = (token) => {
+    if (!token) return null;
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    try {
+      const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+      const padded = normalized.padEnd(
+        normalized.length + ((4 - (normalized.length % 4)) % 4),
+        "=",
+      );
+      return JSON.parse(atob(padded));
+    } catch (err) {
+      return null;
+    }
+  };
+
+  const getUserIdFromToken = () => {
+    if (typeof window === "undefined") return null;
+    const token = localStorage.getItem("authToken");
+    if (!token) return null;
+    const payload = parseJwt(token);
+    if (!payload) return null;
+    return (
+      payload.userId ||
+      payload.id ||
+      payload.nameid ||
+      payload.sub ||
+      payload[
+        "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"
+      ]
+    );
+  };
+
+  const resolveUserId = () => {
+    let savedUser = authUser || null;
+    if (!savedUser && typeof window !== "undefined") {
+      try {
+        savedUser = JSON.parse(localStorage.getItem("currentUser") || "null");
+      } catch (err) {
+        savedUser = null;
+      }
+    }
+    return savedUser?.userId || savedUser?.id || getUserIdFromToken();
+  };
 
   // Scroll to top when component mounts
   useEffect(() => {
@@ -139,6 +198,7 @@ export function ProductDetailPage() {
     if (!id) return;
     setHasRequested(true);
     dispatch(fetchOutfitDetail(id));
+    dispatch(fetchReviewsByOutfitId(id));
   }, [dispatch, id]);
 
   useEffect(() => {
@@ -146,7 +206,26 @@ export function ProductDetailPage() {
     setSelectedSize("");
     setRentalDays(1);
     setShowSizeChart(false);
+    setReviewRating(0);
+    setReviewComment("");
+    setReviewImages([]);
+    setHoverRating(0);
   }, [id]);
+
+  useEffect(() => {
+    if (reviewAddStatus === "succeeded") {
+      toast.success("Gửi đánh giá thành công!");
+      setReviewRating(0);
+      setReviewComment("");
+      setReviewImages([]);
+      setHoverRating(0);
+      dispatch(clearAddReviewStatus());
+    }
+    if (reviewAddStatus === "failed") {
+      toast.error(reviewAddError || "Không thể gửi đánh giá.");
+      dispatch(clearAddReviewStatus());
+    }
+  }, [dispatch, reviewAddError, reviewAddStatus]);
 
   const product = useMemo(() => {
     const imageList = Array.isArray(images) ? [...images] : [];
@@ -256,6 +335,38 @@ export function ProductDetailPage() {
     };
   }, [attributes, id, images, outfit, sizes]);
 
+  const apiReviews = useMemo(() => {
+    const list = Array.isArray(reviewItems) ? reviewItems : [];
+    return list.map((review) => {
+      const createdAt = review?.createdAt;
+      const createdDate = createdAt ? new Date(createdAt) : null;
+      const dateLabel =
+        createdDate && !Number.isNaN(createdDate.getTime())
+          ? createdDate.toLocaleDateString("vi-VN")
+          : createdAt || "";
+
+      return {
+        id:
+          review?.reviewId ??
+          `${review?.userId ?? "user"}-${createdAt ?? "unknown"}`,
+        user: review?.userFullName || review?.userEmail || "Khách hàng",
+        date: dateLabel,
+        rating: typeof review?.rating === "number" ? review.rating : 0,
+        comment: review?.comment || "",
+        images: Array.isArray(review?.images)
+          ? review.images.map((image) => image?.imageUrl).filter(Boolean)
+          : [],
+      };
+    });
+  }, [reviewItems]);
+
+  const apiReviewCount =
+    typeof reviewCount === "number" && reviewCount > 0
+      ? reviewCount
+      : apiReviews.length;
+  const totalReviewCount = apiReviewCount;
+  const allReviews = apiReviews;
+
   if (loading && !outfit) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -329,35 +440,44 @@ export function ProductDetailPage() {
     e.preventDefault();
 
     if (reviewRating === 0) {
-      alert("Vui lòng chọn số sao đánh giá!");
+      toast.error("Vui lòng chọn số sao đánh giá!");
       return;
     }
 
     if (!reviewComment.trim()) {
-      alert("Vui lòng nhập nội dung đánh giá!");
+      toast.error("Vui lòng nhập nội dung đánh giá!");
       return;
     }
 
-    // Create new review
-    const newReview = {
-      id: Date.now(),
-      user: "Người dùng",
-      rating: reviewRating,
-      comment: reviewComment,
-      date: new Date().toLocaleDateString("vi-VN"),
-      images: reviewImages,
-    };
+    const resolvedUserId = resolveUserId();
+    const parsedUserId = Number(resolvedUserId);
+    if (!resolvedUserId || Number.isNaN(parsedUserId)) {
+      toast.error("Vui lòng đăng nhập để gửi đánh giá.");
+      return;
+    }
 
-    // Add to user reviews
-    setUserReviews([newReview, ...userReviews]);
+    const parsedOutfitId = Number(id);
+    if (!id || Number.isNaN(parsedOutfitId)) {
+      toast.error("Không xác định được sản phẩm.");
+      return;
+    }
 
-    // Reset form
-    setReviewRating(0);
-    setReviewComment("");
-    setReviewImages([]);
+    const imageUrls = reviewImages.filter(
+      (image) =>
+        typeof image === "string" &&
+        (/^https?:\/\//i.test(image) ||
+          /^data:image\/[a-zA-Z0-9+.-]+;base64,/.test(image)),
+    );
 
-    // Success message
-    alert("Cảm ơn bạn đã đánh giá sản phẩm!");
+    dispatch(
+      addReview({
+        outfitId: parsedOutfitId,
+        userId: parsedUserId,
+        rating: reviewRating,
+        comment: reviewComment.trim(),
+        imageUrls,
+      }),
+    );
   };
 
   // Handle image upload
@@ -366,7 +486,7 @@ export function ProductDetailPage() {
 
     // Limit to 4 images
     if (reviewImages.length + files.length > 4) {
-      alert("Bạn chỉ có thể tải lên tối đa 4 hình ảnh!");
+      toast.error("Bạn chỉ có thể tải lên tối đa 4 hình ảnh!");
       return;
     }
 
@@ -384,9 +504,6 @@ export function ProductDetailPage() {
   const handleRemoveImage = (index) => {
     setReviewImages((prev) => prev.filter((_, i) => i !== index));
   };
-
-  // Combine product reviews and user reviews
-  const allReviews = [...userReviews, ...(product.reviews || [])];
 
   return (
     <>
@@ -497,7 +614,7 @@ export function ProductDetailPage() {
                   </div>
                   <span className="text-gray-400">·</span>
                   <span className="text-gray-600">
-                    {product.reviewCount} đánh giá
+                    {totalReviewCount} đánh giá
                   </span>
                   {product.availability && (
                     <>
@@ -1017,7 +1134,7 @@ export function ProductDetailPage() {
               {/* Reviews */}
               <div className="lg:col-span-2">
                 <h3 className="text-2xl font-display text-[#1a1a1a] mb-6">
-                  Đánh Giá ({product.reviewCount + userReviews.length})
+                  Đánh Giá ({totalReviewCount})
                 </h3>
 
                 {/* Review Form */}
@@ -1128,15 +1245,28 @@ export function ProductDetailPage() {
                     {/* Submit Button */}
                     <Button
                       type="submit"
+                      disabled={reviewAddStatus === "loading"}
                       className="w-full bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white h-12 font-semibold"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      Gửi Đánh Giá
+                      {reviewAddStatus === "loading"
+                        ? "Đang gửi..."
+                        : "Gửi Đánh Giá"}
                     </Button>
                   </div>
                 </form>
 
                 {/* Reviews List */}
+                {reviewStatus === "loading" && (
+                  <p className="text-sm text-gray-500 mb-4">
+                    Đang tải đánh giá...
+                  </p>
+                )}
+                {reviewStatus === "failed" && reviewError && (
+                  <p className="text-sm text-red-600 mb-4">
+                    {String(reviewError)}
+                  </p>
+                )}
                 {allReviews.length > 0 ? (
                   <div className="space-y-6">
                     {allReviews.map((review) => (
@@ -1186,6 +1316,10 @@ export function ProductDetailPage() {
                         )}
                       </motion.div>
                     ))}
+                  </div>
+                ) : reviewStatus === "loading" ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-lg">
+                    <p className="text-gray-500">Đang tải đánh giá...</p>
                   </div>
                 ) : (
                   <div className="text-center py-12 bg-gray-50 rounded-lg">
