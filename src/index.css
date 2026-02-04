@@ -4946,6 +4946,15 @@
 html {
   font-size: var(--font-size);
   scroll-behavior: smooth;
+  scrollbar-gutter: stable;
+}
+
+/* Keep layout stable when Radix Select opens (RemoveScroll locks body). */
+body[data-select-open][data-scroll-locked],
+body[data-select-open].with-scroll-bars-hidden {
+  overflow-y: scroll !important;
+  padding-right: 0 !important;
+  margin-right: 0 !important;
 }
 
 @property --tw-translate-x {
@@ -5327,5 +5336,36 @@ html {
   to {
     opacity: var(--tw-exit-opacity, 1);
     transform: translate3d(var(--tw-exit-translate-x, 0), var(--tw-exit-translate-y, 0), 0) scale3d(var(--tw-exit-scale, 1), var(--tw-exit-scale, 1), var(--tw-exit-scale, 1)) rotate(var(--tw-exit-rotate, 0));
+  }
+}
+
+/* Custom utilities for checkout dialog */
+.\!max-w-\[95vw\] { max-width: 95vw !important; }
+.\!max-h-\[90vh\] { max-height: 90vh !important; }
+.\!max-w-\[90vw\] { max-width: 90vw !important; }
+.\!max-h-\[95vh\] { max-height: 95vh !important; }
+.max-w-\[95vw\] { max-width: 95vw; }
+.max-h-\[90vh\] { max-height: 90vh; }
+.max-w-\[90vw\] { max-width: 90vw; }
+.max-h-\[95vh\] { max-height: 95vh; }
+.aspect-\[3\/4\] { aspect-ratio: 3 / 4; }
+.min-h-\[600px\] { min-height: 600px; }
+.bg-black\/40 { background-color: #0006; }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.font-smooth {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .bg-black\/40 {
+    background-color: color-mix(in oklab, var(--color-black) 40%, transparent);
+  }
+}
+
+@media (width >= 80rem) {
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }

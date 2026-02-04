@@ -11,9 +11,12 @@ import {
 import { cn } from "./utils";
 
 function Select({
+  modal = false,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+  return (
+    <SelectPrimitive.Root data-slot="select" modal={modal} {...props} />
+  );
 }
 
 function SelectGroup({
@@ -60,6 +63,21 @@ function SelectContent({
   position = "popper",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  React.useEffect(() => {
+    if (typeof document === "undefined") return undefined;
+    const body = document.body;
+    const current = Number(body.getAttribute("data-select-open") || "0");
+    body.setAttribute("data-select-open", String(current + 1));
+    return () => {
+      const next = Number(body.getAttribute("data-select-open") || "1") - 1;
+      if (next <= 0) {
+        body.removeAttribute("data-select-open");
+      } else {
+        body.setAttribute("data-select-open", String(next));
+      }
+    };
+  }, []);
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
