@@ -39,6 +39,10 @@ import {
   clearAddReviewStatus,
   fetchReviewsByOutfitId,
 } from "../features/review/reviewSlice";
+import {
+  addToWishlist,
+  clearWishlistStatus,
+} from "../features/wishlist/wishlistSlice";
 
 const normalizeValue = (value) => String(value ?? "").toLowerCase();
 
@@ -131,6 +135,12 @@ export function ProductDetailPage() {
     addStatus: reviewAddStatus = "idle",
     addError: reviewAddError = null,
   } = useSelector((state) => state.review || {});
+  const {
+    status: wishlistStatus = "idle",
+    message: wishlistMessage = null,
+    error: wishlistError = null,
+    addingId = null,
+  } = useSelector((state) => state.wishlist || {});
   const authUser = useSelector((state) => state.auth?.currentUser);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
@@ -226,6 +236,17 @@ export function ProductDetailPage() {
       dispatch(clearAddReviewStatus());
     }
   }, [dispatch, reviewAddError, reviewAddStatus]);
+
+  useEffect(() => {
+    if (wishlistStatus === "succeeded") {
+      toast.success(wishlistMessage || "Đã thêm vào danh sách yêu thích!");
+      dispatch(clearWishlistStatus());
+    }
+    if (wishlistStatus === "failed") {
+      toast.info(wishlistError || "Outfit đã có trong danh sách yêu thích.");
+      dispatch(clearWishlistStatus());
+    }
+  }, [dispatch, wishlistError, wishlistMessage, wishlistStatus]);
 
   const product = useMemo(() => {
     const imageList = Array.isArray(images) ? [...images] : [];
@@ -411,6 +432,9 @@ export function ProductDetailPage() {
   const rentalPolicy = product.rentalPolicy;
   const minRentalDays = rentalPolicy?.minDays ?? 1;
   const maxRentalDays = rentalPolicy?.maxDays ?? null;
+  const parsedOutfitId = Number(product.id);
+  const isValidOutfitId = Number.isFinite(parsedOutfitId);
+  const isAddingWishlist = isValidOutfitId && addingId === parsedOutfitId;
 
   const handleNextImage = () => {
     if (!product.images.length) return;
@@ -426,14 +450,57 @@ export function ProductDetailPage() {
 
   const handleRentNow = () => {
     if (product.sizes.length > 0 && !selectedSize) {
-      alert("Vui lòng chọn size!");
+      toast.error("Vui lòng chọn size!");
       return;
     }
 
-    // TODO: Add to cart or navigate to checkout
-    alert(
-      `Đã thêm vào giỏ hàng:\n${product.name}\nSize: ${selectedSize}\nSố ngày: ${rentalDays}\nTổng: ${totalPrice.toLocaleString()}đ`,
-    );
+    if (!isValidOutfitId) {
+      toast.error("Không xác định được sản phẩm.");
+      return;
+    }
+
+    const mappedSizes = Array.isArray(product.outfitSizes)
+      ? product.outfitSizes
+          .map((item) => ({
+            size: item?.sizeLabel || item?.size || "",
+            stock: Number(
+              item?.availableQuantity ??
+                item?.stockQuantity ??
+                item?.quantity ??
+                0,
+            ),
+          }))
+          .filter((item) => item.size)
+      : [];
+
+    const fallbackSizes =
+      mappedSizes.length > 0
+        ? mappedSizes
+        : (product.sizes || []).map((sizeLabel) => ({
+            size: sizeLabel,
+            stock: 1,
+          }));
+
+    const selectedSizeValue =
+      selectedSize || fallbackSizes[0]?.size || product.sizes?.[0] || "M";
+
+    navigate("/thanh-toan", {
+      state: {
+        checkoutPrefill: {
+          rentalDays: Math.max(1, Number(rentalDays) || 1),
+          outfit: {
+            id: parsedOutfitId,
+            name: product.name || "Trang phục",
+            category: product.type || product.region || "Trang phục",
+            price: Number(product.pricePerDay) || 0,
+            deposit: Number(rentalPolicy?.deposit) || 500000,
+            image: activeImage || product.images?.[0] || "",
+            sizes: fallbackSizes,
+            selectedSize: selectedSizeValue,
+          },
+        },
+      },
+    });
   };
 
   const handleSubmitReview = (e) => {
@@ -478,6 +545,22 @@ export function ProductDetailPage() {
         imageUrls,
       }),
     );
+  };
+
+  const handleAddToWishlist = () => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để thêm vào danh sách yêu thích.");
+      return;
+    }
+
+    if (!isValidOutfitId) {
+      toast.error("Không xác định được sản phẩm.");
+      return;
+    }
+
+    dispatch(addToWishlist(parsedOutfitId));
   };
 
   // Handle image upload
@@ -569,7 +652,12 @@ export function ProductDetailPage() {
 
                 {/* Wishlist & Share */}
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <button className="w-10 h-10 bg-white backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-[#c1272d] hover:shadow-xl transition-all group border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleAddToWishlist}
+                    disabled={isAddingWishlist}
+                    className="w-10 h-10 bg-white backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-[#c1272d] hover:shadow-xl transition-all group border border-gray-200 disabled:opacity-70"
+                  >
                     <Heart className="w-5 h-5 text-gray-900 group-hover:fill-white group-hover:text-white transition-colors" />
                   </button>
                   <button className="w-10 h-10 bg-white backdrop-blur rounded-full flex items-center justify-center shadow-lg hover:bg-[#d4af37] hover:shadow-xl transition-all group border border-gray-200">
@@ -893,6 +981,8 @@ export function ProductDetailPage() {
                 </Button>
                 <Button
                   variant="outline"
+                  onClick={handleAddToWishlist}
+                  disabled={isAddingWishlist}
                   className="w-14 h-14 border-2 border-[#c1272d] text-[#c1272d] hover:bg-[#c1272d] hover:text-white"
                 >
                   <Heart className="w-5 h-5" />
