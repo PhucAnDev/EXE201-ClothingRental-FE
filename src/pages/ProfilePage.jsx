@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Footer } from "../components/Footer";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -39,12 +39,14 @@ import {
   getUserById,
   updateUserProfile,
 } from "../features/auth/authService";
+import { getMyBookings } from "../features/booking/bookingService";
 import {
   fetchWishlist,
   removeFromWishlist,
 } from "../features/wishlist/wishlistSlice";
 
 export function ProfilePage() {
+  const location = useLocation();
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const {
@@ -55,7 +57,13 @@ export function ProfilePage() {
     removingId,
   } = useSelector((state) => state.wishlist);
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get("tab") || "info";
+  const fallbackTab =
+    location.pathname === "/orders"
+      ? "orders"
+      : location.pathname === "/wishlist"
+        ? "wishlist"
+        : "info";
+  const activeTab = searchParams.get("tab") || fallbackTab;
 
   // Check if user is logged in
   const [user, setUser] = useState(() => {
@@ -144,48 +152,9 @@ export function ProfilePage() {
   const [isRemoveOpen, setIsRemoveOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState(null);
 
-  // Mock data for orders
-  const [orders] = useState([
-    {
-      id: "ORD001",
-      productName: "Áo Dài Truyền Thống Đỏ",
-      image:
-        "https://images.unsplash.com/photo-1700721154874-78695c314eed?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtZXNlJTIwYW8lMjBkYWklMjB0cmFkaXRpb25hbHxlbnwxfHx8fDE3NjE4MDc4NDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      size: "M",
-      rentalDays: 3,
-      totalPrice: 4500000,
-      status: "completed",
-      orderDate: "2024-12-01",
-      rentalDate: "2024-12-15",
-      returnDate: "2024-12-18",
-    },
-    {
-      id: "ORD002",
-      productName: "Áo Tứ Thân Hoàng Kim",
-      image:
-        "https://images.unsplash.com/photo-1676697021566-0403052c42a4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx2aWV0bmFtJTIwdHJhZGl0aW9uYWwlMjBkcmVzcyUyMHdvbWFufGVufDF8fHx8MTc2MTgwNzg0N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-      size: "L",
-      rentalDays: 2,
-      totalPrice: 4400000,
-      status: "active",
-      orderDate: "2025-01-05",
-      rentalDate: "2025-01-10",
-      returnDate: "2025-01-12",
-    },
-    {
-      id: "ORD003",
-      productName: "Áo Dài Cách Tân Hồng",
-      image:
-        "https://images.unsplash.com/photo-1761635491338-f2767d72f997?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx0cmFkaXRpb25hbCUyMHZpZXRuYW1lc2UlMjBjbG90aGluZyUyMHNpbGt8ZW58MXx8fHwxNzYxODA3ODQ4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      size: "S",
-      rentalDays: 1,
-      totalPrice: 1800000,
-      status: "pending",
-      orderDate: "2025-01-13",
-      rentalDate: "2025-01-20",
-      returnDate: "2025-01-21",
-    },
-  ]);
+  const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [ordersError, setOrdersError] = useState("");
   // Wishlist data is loaded from API via Redux
 
   useEffect(() => {
@@ -196,6 +165,54 @@ export function ProfilePage() {
     if (activeTab !== "wishlist") return;
     dispatch(fetchWishlist());
   }, [activeTab, dispatch]);
+
+  useEffect(() => {
+    if (activeTab !== "orders") return;
+    if (!userId) return;
+
+    let isMounted = true;
+
+    const fetchOrders = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        if (!isMounted) return;
+        setOrders([]);
+        setOrdersError("Bạn cần đăng nhập để xem đơn thuê.");
+        return;
+      }
+
+      setOrdersLoading(true);
+      setOrdersError("");
+
+      try {
+        const data = await getMyBookings(token);
+        if (!isMounted) return;
+
+        const validOrders = Array.isArray(data) ? data : [];
+        const sortedOrders = [...validOrders].sort((a, b) => {
+          const dateA = new Date(a?.bookingDate || 0).getTime();
+          const dateB = new Date(b?.bookingDate || 0).getTime();
+          return dateB - dateA;
+        });
+
+        setOrders(sortedOrders);
+      } catch (err) {
+        if (!isMounted) return;
+        setOrders([]);
+        setOrdersError(
+          err?.response?.data?.message || "Không thể tải danh sách đơn thuê.",
+        );
+      } finally {
+        if (isMounted) setOrdersLoading(false);
+      }
+    };
+
+    fetchOrders();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, userId]);
 
   useEffect(() => {
     if (!isEditOpen) {
@@ -409,8 +426,26 @@ export function ProfilePage() {
     }
   };
 
+  const normalizeOrderStatus = (status) => {
+    const value = String(status || "")
+      .trim()
+      .toLowerCase();
+
+    if (["completed", "complete", "success"].includes(value)) {
+      return "completed";
+    }
+    if (["active", "renting", "inprogress", "processing"].includes(value)) {
+      return "active";
+    }
+    if (["cancelled", "canceled", "failed"].includes(value)) {
+      return "cancelled";
+    }
+    return "pending";
+  };
+
   const getStatusBadge = (status) => {
-    switch (status) {
+    const normalizedStatus = normalizeOrderStatus(status);
+    switch (normalizedStatus) {
       case "completed":
         return (
           <Badge className="bg-green-500 text-white">
@@ -423,12 +458,6 @@ export function ProfilePage() {
             <Clock className="w-3 h-3 mr-1" /> Đang thuê
           </Badge>
         );
-      case "pending":
-        return (
-          <Badge className="bg-yellow-500 text-white">
-            <Clock className="w-3 h-3 mr-1" /> Chờ xử lý
-          </Badge>
-        );
       case "cancelled":
         return (
           <Badge className="bg-red-500 text-white">
@@ -436,8 +465,44 @@ export function ProfilePage() {
           </Badge>
         );
       default:
-        return null;
+        return (
+          <Badge className="bg-yellow-500 text-white">
+            <Clock className="w-3 h-3 mr-1" /> Chờ xử lý
+          </Badge>
+        );
     }
+  };
+
+  const formatPrice = (value) => {
+    const amount = Number(value);
+    if (!Number.isFinite(amount)) return "0đ";
+    return `${amount.toLocaleString("vi-VN")}đ`;
+  };
+
+  const formatDate = (value) => {
+    if (!value) return "-";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+    return date.toLocaleDateString("sv-SE");
+  };
+
+  const formatBookingCode = (bookingId) => {
+    const value = Number(bookingId);
+    if (!Number.isFinite(value) || value <= 0) return "ORD";
+    return `ORD${String(value).padStart(3, "0")}`;
+  };
+
+  const getRentalDays = (detail) => {
+    const days = Number(detail?.rentalDays);
+    if (Number.isFinite(days) && days > 0) return days;
+
+    const start = detail?.startTime ? new Date(detail.startTime) : null;
+    const end = detail?.endTime ? new Date(detail.endTime) : null;
+    if (!start || !end) return null;
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+
+    const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+    return diffDays <= 0 ? 1 : diffDays;
   };
 
   const switchTab = (tab) => {
@@ -474,6 +539,36 @@ export function ProfilePage() {
   const editAvatarLetter = (formData.fullName || user.fullName || "U")
     .charAt(0)
     .toUpperCase();
+  const orderRows = orders.flatMap((booking) => {
+    const details = Array.isArray(booking?.details) ? booking.details : [];
+    if (details.length === 0) {
+      return [
+        {
+          rowId: `${booking?.bookingId || "booking"}-0`,
+          image: "",
+          productName: "Trang phục",
+          bookingCode: formatBookingCode(booking?.bookingId),
+          size: "-",
+          rentalDays: null,
+          rentalDate: booking?.bookingDate,
+          status: booking?.status,
+          totalPrice: booking?.totalOrderAmount || 0,
+        },
+      ];
+    }
+
+    return details.map((detail, index) => ({
+      rowId: `${booking?.bookingId || "booking"}-${detail?.detailId || index}`,
+      image: detail?.outfitImageUrl || "",
+      productName: detail?.outfitName || "Trang phục",
+      bookingCode: formatBookingCode(booking?.bookingId),
+      size: detail?.outfitSizeLabel || "-",
+      rentalDays: getRentalDays(detail),
+      rentalDate: detail?.startTime || booking?.bookingDate,
+      status: detail?.status || booking?.status,
+      totalPrice: booking?.totalOrderAmount || 0,
+    }));
+  });
 
   return (
     <>
@@ -853,93 +948,89 @@ export function ProfilePage() {
                   Đơn thuê của tôi
                 </h3>
 
-                {/* Table */}
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-gray-200">
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">
-                          Sản phẩm
-                        </th>
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">
-                          Mã đơn
-                        </th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">
-                          Size
-                        </th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">
-                          Số ngày thuê
-                        </th>
-                        <th className="text-left py-4 px-4 font-medium text-gray-700">
-                          Ngày thuê
-                        </th>
-                        <th className="text-center py-4 px-4 font-medium text-gray-700">
-                          Trạng thái
-                        </th>
-                        <th className="text-right py-4 px-4 font-medium text-gray-700">
-                          Tổng tiền
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.map((order) => (
-                        <tr
-                          key={order.id}
-                          className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                        >
-                          {/* Product Image & Name */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <img
-                                src={order.image}
-                                alt={order.productName}
-                                className="w-16 h-16 object-cover rounded-lg"
-                              />
-                              <span className="font-medium text-[#1a1a1a] min-w-[150px]">
-                                {order.productName}
-                              </span>
-                            </div>
-                          </td>
+                {ordersLoading && (
+                  <p className="text-sm text-gray-500 mb-6">
+                    Đang tải danh sách đơn thuê...
+                  </p>
+                )}
+                {ordersError && (
+                  <p className="text-sm text-red-600 mb-6">{ordersError}</p>
+                )}
 
-                          {/* Order ID */}
-                          <td className="py-4 px-4 text-gray-600">
-                            {order.id}
-                          </td>
-
-                          {/* Size */}
-                          <td className="py-4 px-4 text-center font-medium">
-                            {order.size}
-                          </td>
-
-                          {/* Rental Days */}
-                          <td className="py-4 px-4 text-center">
-                            {order.rentalDays} ngày
-                          </td>
-
-                          {/* Rental Date */}
-                          <td className="py-4 px-4 text-gray-600">
-                            {order.rentalDate}
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-4 px-4 text-center">
-                            {getStatusBadge(order.status)}
-                          </td>
-
-                          {/* Total Price */}
-                          <td className="py-4 px-4 text-right">
-                            <span className="font-bold text-[#c1272d]">
-                              {order.totalPrice.toLocaleString("vi-VN")}đ
-                            </span>
-                          </td>
+                {!ordersLoading && !ordersError && orderRows.length > 0 && (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b-2 border-gray-200">
+                          <th className="text-left py-4 px-4 font-medium text-gray-700">
+                            Sản phẩm
+                          </th>
+                          <th className="text-left py-4 px-4 font-medium text-gray-700">
+                            Mã đơn
+                          </th>
+                          <th className="text-center py-4 px-4 font-medium text-gray-700">
+                            Size
+                          </th>
+                          <th className="text-center py-4 px-4 font-medium text-gray-700">
+                            Số ngày thuê
+                          </th>
+                          <th className="text-left py-4 px-4 font-medium text-gray-700">
+                            Ngày thuê
+                          </th>
+                          <th className="text-center py-4 px-4 font-medium text-gray-700">
+                            Trạng thái
+                          </th>
+                          <th className="text-right py-4 px-4 font-medium text-gray-700">
+                            Tổng tiền
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {orderRows.map((order) => (
+                          <tr
+                            key={order.rowId}
+                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                          >
+                            <td className="py-4 px-4">
+                              <div className="flex items-center gap-3">
+                                <ImageWithFallback
+                                  src={order.image}
+                                  alt={order.productName}
+                                  className="w-16 h-16 object-cover rounded-lg bg-gray-100"
+                                />
+                                <span className="font-medium text-[#1a1a1a] min-w-[150px]">
+                                  {order.productName}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              {order.bookingCode}
+                            </td>
+                            <td className="py-4 px-4 text-center font-medium">
+                              {order.size}
+                            </td>
+                            <td className="py-4 px-4 text-center">
+                              {order.rentalDays ? `${order.rentalDays} ngày` : "-"}
+                            </td>
+                            <td className="py-4 px-4 text-gray-600">
+                              {formatDate(order.rentalDate)}
+                            </td>
+                            <td className="py-4 px-4 text-center">
+                              {getStatusBadge(order.status)}
+                            </td>
+                            <td className="py-4 px-4 text-right">
+                              <span className="font-bold text-[#c1272d]">
+                                {formatPrice(order.totalPrice)}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
-                {/* Empty State */}
-                {orders.length === 0 && (
+                {!ordersLoading && !ordersError && orderRows.length === 0 && (
                   <div className="text-center py-16">
                     <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Bạn chưa có đơn thuê nào</p>

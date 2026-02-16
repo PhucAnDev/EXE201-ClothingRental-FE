@@ -18,6 +18,7 @@ import {
 } from "../components/ui/select";
 import {
   getOutfitImages,
+  getOutfitSizes,
   getOutfits,
   type OutfitImageItem,
   type OutfitItem,
@@ -119,6 +120,23 @@ const selectPrimaryImage = (images: OutfitImageItem[]) => {
   return sorted[0]?.imageUrl || "";
 };
 
+type CollectionItem = {
+  id: number | string;
+  outfitId?: number;
+  name: string;
+  category: string;
+  categoryDisplay: string;
+  price: string;
+  priceNumeric: number;
+  style: string;
+  color: string;
+  image: string;
+  description: string;
+  tag: string;
+  available: boolean;
+  createdAt?: string;
+};
+
 export function CollectionPage() {
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
@@ -205,7 +223,7 @@ export function CollectionPage() {
     }
   }, [dispatch, wishlistMessage, wishlistStatus]);
 
-  const collectionItems = useMemo(() => {
+  const collectionItems = useMemo<CollectionItem[]>(() => {
     return outfits.map((outfit, index) => {
       const rawPrice = outfit.baseRentalPrice;
       const basePrice =
@@ -216,8 +234,10 @@ export function CollectionPage() {
 
       return {
         id: outfit.outfitId ?? index,
+        outfitId: outfit.outfitId,
         name: displayName,
         category: normalizeCategory(categoryText),
+        categoryDisplay: styleText || "Trang phục",
         price: basePrice.toLocaleString("vi-VN"),
         priceNumeric: basePrice,
         style: normalizeStyle(styleText),
@@ -233,10 +253,54 @@ export function CollectionPage() {
     });
   }, [outfits]);
 
-  const handleRentNow = () => {
-    // TODO: Check if user is logged in via your API
-    // For now, just navigate to checkout
-    navigate("/thanh-toan");
+  const handleRentNow = async (item: CollectionItem) => {
+    const parsedOutfitId = Number(item.outfitId ?? item.id);
+    if (!Number.isFinite(parsedOutfitId) || parsedOutfitId <= 0) {
+      toast.error("Không xác định được sản phẩm.");
+      return;
+    }
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+
+    let mappedSizes: Array<{ sizeId: number; size: string; stock: number }> =
+      [];
+
+    try {
+      const sizeRes = await getOutfitSizes(parsedOutfitId, token);
+      const sizes = Array.isArray(sizeRes?.data) ? sizeRes.data : [];
+      mappedSizes = sizes
+        .map((size) => ({
+          sizeId: Number(size?.sizeId ?? 0),
+          size: size?.sizeLabel || "",
+          stock: Number(size?.stockQuantity ?? 0),
+        }))
+        .filter((size) => Boolean(size.size));
+    } catch (error) {
+      console.error("Không thể tải size trang phục:", error);
+    }
+
+    const selectedSize =
+      mappedSizes.find((size) => size.stock > 0)?.size ||
+      mappedSizes[0]?.size ||
+      "M";
+
+    navigate("/thanh-toan", {
+      state: {
+        checkoutPrefill: {
+          rentalDays: 1,
+          outfit: {
+            id: parsedOutfitId,
+            name: item.name || "Trang phục",
+            category: item.categoryDisplay || "Trang phục",
+            price: Number(item.priceNumeric) || 0,
+            image: item.image || "",
+            sizes: mappedSizes,
+            selectedSize,
+          },
+        },
+      },
+    });
   };
 
   const filteredCollections = collectionItems.filter((item) => {
@@ -502,7 +566,7 @@ export function CollectionPage() {
                       className="flex-1 bg-white text-[#1a1a1a] hover:bg-[#d4af37] hover:text-white transition-all duration-300 shadow-gold"
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleRentNow();
+                        void handleRentNow(item);
                       }}
                     >
                       <ShoppingBag className="w-4 h-4 mr-2" />

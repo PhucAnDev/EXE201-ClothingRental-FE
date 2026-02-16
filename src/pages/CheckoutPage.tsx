@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
-import { QRCodeSVG } from "qrcode.react";
 import { Plus, X } from "lucide-react";
 import {
   getOutfitImages,
@@ -133,6 +132,7 @@ const normalizePrefillOutfit = (outfit) => {
 };
 
 export function CheckoutPage() {
+  const navigate = useNavigate();
   const routeLocation = useLocation();
   const [searchParams] = useSearchParams();
   const packageId = searchParams.get("package");
@@ -368,6 +368,39 @@ export function CheckoutPage() {
     } finally {
       setIsCreatingOrder(false);
     }
+  };
+
+  const handleConfirmPayment = () => {
+    const orderData = {
+      fullName,
+      phone,
+      email: "",
+      includeRental,
+      includePhotoshoot: hasSelectedServicePackages,
+      selectedOutfits,
+      rentalTotal: bookingRentalTotal,
+      rentalDeposit: bookingDepositTotal,
+      rentalDate: new Date().toLocaleDateString("sv-SE"),
+      photoshootTotal: bookingServiceTotal,
+      photoshootDeposit: 0,
+      photoshootDate: "",
+      photoshootTime: "",
+      packageName: selectedServicePackages
+        .map((pkg) => pkg?.name)
+        .filter(Boolean)
+        .join(", "),
+      paymentMethod,
+      combinedTotal: bookingOrderTotal,
+      combinedDeposit: bookingDepositTotal,
+      address,
+      city,
+      district,
+      ward,
+    };
+
+    localStorage.setItem("lastOrder", JSON.stringify(orderData));
+    setShowPaymentDialog(false);
+    navigate("/payment-success");
   };
 
   useEffect(() => {
@@ -1242,7 +1275,6 @@ export function CheckoutPage() {
         </div>
       </div>
 
-      {/* Payment Dialog - unchanged */}
       <Dialog open={showPaymentDialog} onOpenChange={setShowPaymentDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -1253,12 +1285,6 @@ export function CheckoutPage() {
 
           <div className="space-y-6 py-4">
             <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-              {createdBooking?.bookingId && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Mã đơn hàng:</span>
-                  <span className="text-gray-900">#{createdBooking.bookingId}</span>
-                </div>
-              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Họ và tên:</span>
                 <span className="text-gray-900">{fullName}</span>
@@ -1277,7 +1303,7 @@ export function CheckoutPage() {
               )}
               {hasSelectedServicePackages && (
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Dịch vụ chụp ảnh:</span>
+                  <span className="text-gray-600">Dịch vụ kèm theo:</span>
                   <span className="text-gray-900">
                     {bookingServiceTotal.toLocaleString("vi-VN")} ₫
                   </span>
@@ -1303,36 +1329,18 @@ export function CheckoutPage() {
             </div>
 
             <div className="flex flex-col items-center space-y-3">
-              <div className="bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm">
-                <QRCodeSVG
-                  value={`SACVIET-ORDER-${Date.now()}-${fullName}-${paymentMethod === "coc" ? bookingDepositTotal : bookingOrderTotal}`}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                />
-              </div>
               <p className="text-sm text-gray-600 text-center">
-                Quét mã QR để thanh toán qua ví điện tử
+                Đơn hàng đã được tạo thành công! Nhân viên sẽ liên hệ xác nhận
+                trong 24h.
               </p>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 mb-2">
-                💳 Hướng dẫn thanh toán:
-              </p>
-              <ul className="text-xs text-blue-600 space-y-1">
-                <li>• Mở ứng dụng ngân hàng/ví điện tử</li>
-                <li>• Quét mã QR phía trên</li>
-                <li>• Xác nhận số tiền và hoàn tất thanh toán</li>
-                <li>• Nhân viên sẽ liên hệ xác nhận trong 24h</li>
-              </ul>
             </div>
 
             <Button
-              onClick={() => setShowPaymentDialog(false)}
+              type="button"
+              onClick={handleConfirmPayment}
               className="w-full bg-red-600 hover:bg-red-700 text-white"
             >
-              Đóng
+              Thanh Toán
             </Button>
           </div>
         </DialogContent>
