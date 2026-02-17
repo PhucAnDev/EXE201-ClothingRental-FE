@@ -431,6 +431,16 @@ export function ProfilePage() {
       .trim()
       .toLowerCase();
 
+    if (value === "paid") {
+      return "paid";
+    }
+    if (value === "depositpaid") {
+      return "depositpaid";
+    }
+    if (value === "partiallypaid") {
+      return "partiallypaid";
+    }
+
     if (["completed", "complete", "success"].includes(value)) {
       return "completed";
     }
@@ -443,9 +453,53 @@ export function ProfilePage() {
     return "pending";
   };
 
+  const normalizeStatusValue = (status) =>
+    String(status || "")
+      .trim()
+      .toLowerCase();
+
+  const resolveDisplayStatus = (bookingStatus, paymentStatus, detailStatus) => {
+    const lifecycleStatus = normalizeStatusValue(bookingStatus || detailStatus);
+    if (["cancelled", "canceled"].includes(lifecycleStatus)) {
+      return "cancelled";
+    }
+    if (["completed", "complete", "success"].includes(lifecycleStatus)) {
+      return "completed";
+    }
+
+    const normalizedPaymentStatus = normalizeStatusValue(paymentStatus);
+    if (normalizedPaymentStatus) {
+      return normalizedPaymentStatus;
+    }
+
+    if (["active", "renting", "inprogress", "processing"].includes(lifecycleStatus)) {
+      return "active";
+    }
+
+    return lifecycleStatus || "pending";
+  };
+
   const getStatusBadge = (status) => {
     const normalizedStatus = normalizeOrderStatus(status);
     switch (normalizedStatus) {
+      case "paid":
+        return (
+          <Badge className="bg-green-600 text-white">
+            <CheckCircle className="w-3 h-3 mr-1" /> Đã thanh toán
+          </Badge>
+        );
+      case "depositpaid":
+        return (
+          <Badge className="bg-amber-500 text-white">
+            <Clock className="w-3 h-3 mr-1" /> Đã đặt cọc
+          </Badge>
+        );
+      case "partiallypaid":
+        return (
+          <Badge className="bg-blue-500 text-white">
+            <Clock className="w-3 h-3 mr-1" /> Đã thanh toán một phần
+          </Badge>
+        );
       case "completed":
         return (
           <Badge className="bg-green-500 text-white">
@@ -551,7 +605,11 @@ export function ProfilePage() {
           size: "-",
           rentalDays: null,
           rentalDate: booking?.bookingDate,
-          status: booking?.status,
+          status: resolveDisplayStatus(
+            booking?.status,
+            booking?.paymentStatus,
+            null,
+          ),
           totalPrice: booking?.totalOrderAmount || 0,
         },
       ];
@@ -565,7 +623,11 @@ export function ProfilePage() {
       size: detail?.outfitSizeLabel || "-",
       rentalDays: getRentalDays(detail),
       rentalDate: detail?.startTime || booking?.bookingDate,
-      status: detail?.status || booking?.status,
+      status: resolveDisplayStatus(
+        booking?.status,
+        booking?.paymentStatus,
+        detail?.status,
+      ),
       totalPrice: booking?.totalOrderAmount || 0,
     }));
   });

@@ -89,3 +89,14 @@ export const getMyBookings = async (
 
   return (res.data as BookingListItemResponse[]) || [];
 };
+
+export const getMyBookingById = async (
+  bookingId: number,
+  token?: string | null,
+): Promise<BookingListItemResponse> => {
+  const res = await api.get(`/api/Booking/get-by-id/${bookingId}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+
+  return (res.data as BookingListItemResponse) || {};
+};

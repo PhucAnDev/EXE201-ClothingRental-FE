@@ -22,6 +22,7 @@ import { ProfilePage } from "./pages/ProfilePage.jsx";
 import { ProductDetailPage } from "./pages/ProductDetailPage";
 import { ProductDetailTest } from "./pages/ProductDetailTest";
 import { PaymentSuccessPage } from "./pages/PaymentSuccessPage";
+import { PaymentFailedPage } from "./pages/PaymentFailedPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import ProductsPage from "./pages/admin/ProductsPage";
 import UsersPage from "./pages/admin/UsersPage";
@@ -65,6 +66,7 @@ function AppContent() {
         <Route path="/orders" element={<ProfilePage />} />
         <Route path="/wishlist" element={<ProfilePage />} />
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
+        <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin/dashboard" element={<DashboardPage />} />

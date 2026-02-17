@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -36,6 +36,10 @@ import {
   type BookingResponse,
   type CreateBookingItemPayload,
 } from "../features/booking/bookingService";
+import {
+  createPaymentUrl,
+  type PaymentType,
+} from "../features/payment/paymentService";
 
 const ORDER_DEPOSIT_RATE = 0.3;
 
@@ -132,7 +136,6 @@ const normalizePrefillOutfit = (outfit) => {
 };
 
 export function CheckoutPage() {
-  const navigate = useNavigate();
   const routeLocation = useLocation();
   const [searchParams] = useSearchParams();
   const packageId = searchParams.get("package");
@@ -186,6 +189,7 @@ export function CheckoutPage() {
     number | null
   >(null);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isRedirectingToPayment, setIsRedirectingToPayment] = useState(false);
   const [createdBooking, setCreatedBooking] = useState<BookingResponse | null>(
     null,
   );
@@ -370,37 +374,47 @@ export function CheckoutPage() {
     }
   };
 
-  const handleConfirmPayment = () => {
-    const orderData = {
-      fullName,
-      phone,
-      email: "",
-      includeRental,
-      includePhotoshoot: hasSelectedServicePackages,
-      selectedOutfits,
-      rentalTotal: bookingRentalTotal,
-      rentalDeposit: bookingDepositTotal,
-      rentalDate: new Date().toLocaleDateString("sv-SE"),
-      photoshootTotal: bookingServiceTotal,
-      photoshootDeposit: 0,
-      photoshootDate: "",
-      photoshootTime: "",
-      packageName: selectedServicePackages
-        .map((pkg) => pkg?.name)
-        .filter(Boolean)
-        .join(", "),
-      paymentMethod,
-      combinedTotal: bookingOrderTotal,
-      combinedDeposit: bookingDepositTotal,
-      address,
-      city,
-      district,
-      ward,
-    };
+  const handleConfirmPayment = async () => {
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!token) {
+      alert("Vui lòng đăng nhập để thanh toán.");
+      return;
+    }
 
-    localStorage.setItem("lastOrder", JSON.stringify(orderData));
-    setShowPaymentDialog(false);
-    navigate("/payment-success");
+    const bookingId = Number(createdBooking?.bookingId ?? 0);
+    if (!Number.isFinite(bookingId) || bookingId <= 0) {
+      alert("Không tìm thấy mã đơn hàng để thanh toán. Vui lòng tạo lại đơn.");
+      return;
+    }
+
+    const paymentType: PaymentType =
+      paymentMethod === "full" ? "full" : "deposit";
+
+    setIsRedirectingToPayment(true);
+
+    try {
+      const paymentResponse = await createPaymentUrl(
+        { bookingId, paymentType },
+        token,
+      );
+      const paymentUrl = paymentResponse?.url || paymentResponse?.Url;
+
+      if (!paymentUrl) {
+        throw new Error("Không nhận được link thanh toán VNPay.");
+      }
+
+      setShowPaymentDialog(false);
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error("Failed to create payment URL:", error);
+      const message =
+        (error as any)?.response?.data?.message ||
+        "Không thể khởi tạo thanh toán VNPay. Vui lòng thử lại.";
+      alert(message);
+    } finally {
+      setIsRedirectingToPayment(false);
+    }
   };
 
   useEffect(() => {
@@ -1339,8 +1353,9 @@ export function CheckoutPage() {
               type="button"
               onClick={handleConfirmPayment}
               className="w-full bg-red-600 hover:bg-red-700 text-white"
+              disabled={isRedirectingToPayment}
             >
-              Thanh Toán
+              {isRedirectingToPayment ? "Đang chuyển đến VNPay..." : "Thanh Toán"}
             </Button>
           </div>
         </DialogContent>
