@@ -30,6 +30,8 @@ import {
   XCircle,
   Star,
   Lock,
+  Eye,
+  Trash2,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { toast } from "sonner";
@@ -39,7 +41,8 @@ import {
   getUserById,
   updateUserProfile,
 } from "../features/auth/authService";
-import { getMyBookings } from "../features/booking/bookingService";
+import { cancelMyBooking, getMyBookings } from "../features/booking/bookingService";
+import { createPaymentUrl } from "../features/payment/paymentService";
 import {
   fetchWishlist,
   removeFromWishlist,
@@ -155,6 +158,10 @@ export function ProfilePage() {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [ordersError, setOrdersError] = useState("");
+  const [payingBookingId, setPayingBookingId] = useState(null);
+  const [cancellingBookingId, setCancellingBookingId] = useState(null);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   // Wishlist data is loaded from API via Redux
 
   useEffect(() => {
@@ -431,6 +438,9 @@ export function ProfilePage() {
       .trim()
       .toLowerCase();
 
+    if (value === "unpaid") {
+      return "unpaid";
+    }
     if (value === "paid") {
       return "paid";
     }
@@ -479,51 +489,86 @@ export function ProfilePage() {
     return lifecycleStatus || "pending";
   };
 
+  const resolvePaymentAction = (bookingStatus, paymentStatus) => {
+    const lifecycleStatus = normalizeStatusValue(bookingStatus);
+    if (["cancelled", "canceled", "completed", "complete"].includes(lifecycleStatus)) {
+      return null;
+    }
+
+    const normalizedPaymentStatus = normalizeStatusValue(paymentStatus);
+    if (normalizedPaymentStatus === "paid") {
+      return null;
+    }
+
+    if (["depositpaid", "partiallypaid"].includes(normalizedPaymentStatus)) {
+      return {
+        paymentType: "full",
+        label: "Thanh toán còn lại",
+      };
+    }
+
+    if (["", "unpaid", "pending"].includes(normalizedPaymentStatus)) {
+      return {
+        paymentType: "deposit",
+        label: "Thanh toán cọc",
+      };
+    }
+
+    return {
+      paymentType: "deposit",
+      label: "Thanh toán tiếp",
+    };
+  };
+
+  const canCancelBooking = (bookingStatus, paymentStatus) => {
+    const lifecycleStatus = normalizeStatusValue(bookingStatus);
+    if (lifecycleStatus && lifecycleStatus !== "pending") {
+      return false;
+    }
+
+    const normalizedPaymentStatus = normalizeStatusValue(paymentStatus);
+    if (["paid", "depositpaid", "partiallypaid"].includes(normalizedPaymentStatus)) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const actionOutlineButtonClass =
+    "border-[#c1272d] bg-white text-[#c1272d] hover:bg-[#c1272d] hover:text-white hover:border-[#c1272d] transition-colors duration-200";
+
   const getStatusBadge = (status) => {
     const normalizedStatus = normalizeOrderStatus(status);
+    const baseClass =
+      "inline-flex items-center whitespace-nowrap gap-1.5 rounded-sm px-3 py-1.5 text-sm leading-none font-semibold text-white shadow-sm";
+
+    const renderStatus = (IconComponent, label, color) => (
+      <span
+        className={baseClass}
+        style={{ backgroundColor: color, minHeight: "30px" }}
+      >
+        <IconComponent className="w-3.5 h-3.5 shrink-0" />
+        <span>{label}</span>
+      </span>
+    );
+
     switch (normalizedStatus) {
+      case "unpaid":
+        return renderStatus(Clock, "Chưa thanh toán", "#6b7280");
       case "paid":
-        return (
-          <Badge className="bg-green-600 text-white">
-            <CheckCircle className="w-3 h-3 mr-1" /> Đã thanh toán
-          </Badge>
-        );
+        return renderStatus(CheckCircle, "Đã thanh toán", "#16a34a");
       case "depositpaid":
-        return (
-          <Badge className="bg-amber-500 text-white">
-            <Clock className="w-3 h-3 mr-1" /> Đã đặt cọc
-          </Badge>
-        );
+        return renderStatus(Clock, "Đã đặt cọc", "#f59e0b");
       case "partiallypaid":
-        return (
-          <Badge className="bg-blue-500 text-white">
-            <Clock className="w-3 h-3 mr-1" /> Đã thanh toán một phần
-          </Badge>
-        );
+        return renderStatus(Clock, "Đã thanh toán một phần", "#3b82f6");
       case "completed":
-        return (
-          <Badge className="bg-green-500 text-white">
-            <CheckCircle className="w-3 h-3 mr-1" /> Hoàn thành
-          </Badge>
-        );
+        return renderStatus(CheckCircle, "Hoàn thành", "#22c55e");
       case "active":
-        return (
-          <Badge className="bg-blue-500 text-white">
-            <Clock className="w-3 h-3 mr-1" /> Đang thuê
-          </Badge>
-        );
+        return renderStatus(Clock, "Đang thuê", "#3b82f6");
       case "cancelled":
-        return (
-          <Badge className="bg-red-500 text-white">
-            <XCircle className="w-3 h-3 mr-1" /> Đã hủy
-          </Badge>
-        );
+        return renderStatus(XCircle, "Đã hủy", "#ef4444");
       default:
-        return (
-          <Badge className="bg-yellow-500 text-white">
-            <Clock className="w-3 h-3 mr-1" /> Chờ xử lý
-          </Badge>
-        );
+        return renderStatus(Clock, "Chờ xử lý", "#eab308");
     }
   };
 
@@ -557,6 +602,22 @@ export function ProfilePage() {
 
     const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
     return diffDays <= 0 ? 1 : diffDays;
+  };
+
+  const getOrderReturnDate = (details, fallbackDate) => {
+    if (!Array.isArray(details) || details.length === 0) return fallbackDate || null;
+
+    let latestDate = null;
+    details.forEach((detail) => {
+      if (!detail?.endTime) return;
+      const end = new Date(detail.endTime);
+      if (Number.isNaN(end.getTime())) return;
+      if (!latestDate || end > latestDate) {
+        latestDate = end;
+      }
+    });
+
+    return latestDate ? latestDate.toISOString() : fallbackDate || null;
   };
 
   const switchTab = (tab) => {
@@ -593,44 +654,184 @@ export function ProfilePage() {
   const editAvatarLetter = (formData.fullName || user.fullName || "U")
     .charAt(0)
     .toUpperCase();
-  const orderRows = orders.flatMap((booking) => {
+  const orderCards = orders.map((booking) => {
     const details = Array.isArray(booking?.details) ? booking.details : [];
-    if (details.length === 0) {
-      return [
-        {
-          rowId: `${booking?.bookingId || "booking"}-0`,
-          image: "",
-          productName: "Trang phục",
-          bookingCode: formatBookingCode(booking?.bookingId),
-          size: "-",
-          rentalDays: null,
-          rentalDate: booking?.bookingDate,
-          status: resolveDisplayStatus(
-            booking?.status,
-            booking?.paymentStatus,
-            null,
-          ),
-          totalPrice: booking?.totalOrderAmount || 0,
-        },
-      ];
-    }
+    const serviceBookings = Array.isArray(booking?.serviceBookings)
+      ? booking.serviceBookings
+      : [];
 
-    return details.map((detail, index) => ({
-      rowId: `${booking?.bookingId || "booking"}-${detail?.detailId || index}`,
-      image: detail?.outfitImageUrl || "",
-      productName: detail?.outfitName || "Trang phục",
+    const items =
+      details.length > 0
+        ? details.map((detail, index) => ({
+            rowId: `${booking?.bookingId || "booking"}-${detail?.detailId || index}`,
+            image: detail?.outfitImageUrl || "",
+            productName: detail?.outfitName || "Trang phục",
+            size: detail?.outfitSizeLabel || "-",
+            rentalDays: getRentalDays(detail),
+            rentalDate: detail?.startTime || booking?.bookingDate,
+            price: Number(detail?.unitPrice) || 0,
+          }))
+        : [
+            {
+              rowId: `${booking?.bookingId || "booking"}-0`,
+              image: "",
+              productName: "Trang phục",
+              size: "-",
+              rentalDays: null,
+              rentalDate: booking?.bookingDate,
+              price: 0,
+            },
+          ];
+
+    const services = serviceBookings.map((service, index) => ({
+      svcBookingId: `${booking?.bookingId || "booking"}-svc-${service?.svcBookingId || index}`,
+      name: service?.servicePackageName || "Dịch vụ kèm theo",
+      price: Number(service?.totalPrice) || 0,
+    }));
+
+    return {
+      bookingId: booking?.bookingId,
       bookingCode: formatBookingCode(booking?.bookingId),
-      size: detail?.outfitSizeLabel || "-",
-      rentalDays: getRentalDays(detail),
-      rentalDate: detail?.startTime || booking?.bookingDate,
+      orderDate: booking?.bookingDate,
+      rentalDate:
+        items.find((item) => item?.rentalDate)?.rentalDate || booking?.bookingDate,
+      returnDate: getOrderReturnDate(details, booking?.bookingDate),
       status: resolveDisplayStatus(
         booking?.status,
         booking?.paymentStatus,
-        detail?.status,
+        details[0]?.status,
       ),
-      totalPrice: booking?.totalOrderAmount || 0,
-    }));
+      totalPrice: Number(booking?.totalOrderAmount) || 0,
+      itemCount: details.length || items.length,
+      items,
+      services,
+      paymentAction: resolvePaymentAction(booking?.status, booking?.paymentStatus),
+      canCancel: canCancelBooking(booking?.status, booking?.paymentStatus),
+    };
   });
+
+  const handleViewOrderDetail = (bookingId) => {
+    if (!bookingId) return;
+    const selected = orderCards.find(
+      (order) => Number(order.bookingId) === Number(bookingId),
+    );
+    if (!selected) {
+      toast.error("Không tìm thấy thông tin đơn thuê.");
+      return;
+    }
+    setSelectedOrder(selected);
+    setIsOrderModalOpen(true);
+  };
+
+  const handleDeleteOrder = async (bookingId, bookingCode) => {
+    if (!bookingId) return;
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để tiếp tục.");
+      return;
+    }
+
+    const accepted = window.confirm(
+      `Bạn có chắc muốn hủy đơn thuê ${bookingCode || formatBookingCode(bookingId)}?`,
+    );
+    if (!accepted) return;
+
+    setCancellingBookingId(Number(bookingId));
+    try {
+      const response = await cancelMyBooking(Number(bookingId), token);
+
+      setOrders((prevOrders) =>
+        prevOrders.map((booking) => {
+          if (Number(booking?.bookingId) !== Number(bookingId)) return booking;
+
+          const nextDetails = Array.isArray(booking?.details)
+            ? booking.details.map((detail) => ({ ...detail, status: "Cancelled" }))
+            : booking?.details;
+          const nextServiceBookings = Array.isArray(booking?.serviceBookings)
+            ? booking.serviceBookings.map((service) => ({ ...service, status: "Cancelled" }))
+            : booking?.serviceBookings;
+
+          return {
+            ...booking,
+            status: "Cancelled",
+            details: nextDetails,
+            serviceBookings: nextServiceBookings,
+          };
+        }),
+      );
+
+      if (Number(selectedOrder?.bookingId) === Number(bookingId)) {
+        closeOrderModal();
+      }
+
+      toast.success(
+        response?.message ||
+          `Đã hủy đơn thuê ${bookingCode || formatBookingCode(bookingId)}.`,
+      );
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Không thể hủy đơn thuê. Vui lòng thử lại.";
+      toast.error(message);
+    } finally {
+      setCancellingBookingId(null);
+    }
+  };
+
+  const handleContinuePayment = async (bookingId, paymentType) => {
+    if (!bookingId || !paymentType) return;
+
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("authToken") : null;
+    if (!token) {
+      toast.error("Vui lòng đăng nhập để tiếp tục thanh toán.");
+      return;
+    }
+
+    setPayingBookingId(Number(bookingId));
+    try {
+      const response = await createPaymentUrl(
+        {
+          bookingId: Number(bookingId),
+          paymentType,
+        },
+        token,
+      );
+
+      const paymentUrl = response?.url || response?.Url;
+      if (!paymentUrl) {
+        throw new Error("Không nhận được link thanh toán VNPay.");
+      }
+
+      window.location.href = paymentUrl;
+    } catch (error) {
+      const message =
+        error?.response?.data?.message ||
+        "Không thể tạo link thanh toán. Vui lòng thử lại.";
+      toast.error(message);
+    } finally {
+      setPayingBookingId(null);
+    }
+  };
+
+  const closeOrderModal = () => {
+    setIsOrderModalOpen(false);
+    setSelectedOrder(null);
+  };
+
+  const selectedOrderItemTotal = selectedOrder
+    ? selectedOrder.items.reduce((sum, item) => sum + (Number(item?.price) || 0), 0)
+    : 0;
+  const selectedOrderServiceTotal = selectedOrder
+    ? selectedOrder.services.reduce((sum, service) => sum + (Number(service?.price) || 0), 0)
+    : 0;
+  const selectedOrderTotal =
+    Number(selectedOrder?.totalPrice) > 0
+      ? Number(selectedOrder?.totalPrice)
+      : selectedOrderItemTotal + selectedOrderServiceTotal;
+  const selectedOrderDeposit = Math.round(selectedOrderTotal * 0.3);
 
   return (
     <>
@@ -1019,80 +1220,146 @@ export function ProfilePage() {
                   <p className="text-sm text-red-600 mb-6">{ordersError}</p>
                 )}
 
-                {!ordersLoading && !ordersError && orderRows.length > 0 && (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b-2 border-gray-200">
-                          <th className="text-left py-4 px-4 font-medium text-gray-700">
-                            Sản phẩm
-                          </th>
-                          <th className="text-left py-4 px-4 font-medium text-gray-700">
-                            Mã đơn
-                          </th>
-                          <th className="text-center py-4 px-4 font-medium text-gray-700">
-                            Size
-                          </th>
-                          <th className="text-center py-4 px-4 font-medium text-gray-700">
-                            Số ngày thuê
-                          </th>
-                          <th className="text-left py-4 px-4 font-medium text-gray-700">
-                            Ngày thuê
-                          </th>
-                          <th className="text-center py-4 px-4 font-medium text-gray-700">
-                            Trạng thái
-                          </th>
-                          <th className="text-right py-4 px-4 font-medium text-gray-700">
-                            Tổng tiền
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orderRows.map((order) => (
-                          <tr
-                            key={order.rowId}
-                            className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                          >
-                            <td className="py-4 px-4">
-                              <div className="flex items-center gap-3">
-                                <ImageWithFallback
-                                  src={order.image}
-                                  alt={order.productName}
-                                  className="w-16 h-16 object-cover rounded-lg bg-gray-100"
-                                />
-                                <span className="font-medium text-[#1a1a1a] min-w-[150px]">
-                                  {order.productName}
-                                </span>
+                {!ordersLoading && !ordersError && orderCards.length > 0 && (
+                  <div className="space-y-6">
+                    {orderCards.map((order) => (
+                      <div
+                        key={order.bookingCode}
+                        className="border-2 border-gray-200 rounded-xl overflow-hidden hover:border-[#d4af37]/40 transition-all"
+                      >
+                        <div className="bg-gradient-to-r from-gray-50 to-[#fef9f3] px-6 py-4 border-b border-gray-200">
+                          <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div className="flex items-center gap-6">
+                              <div>
+                                <span className="text-sm text-gray-500">Mã đơn</span>
+                                <p className="font-bold text-[#1a1a1a]">{order.bookingCode}</p>
                               </div>
-                            </td>
-                            <td className="py-4 px-4 text-gray-600">
-                              {order.bookingCode}
-                            </td>
-                            <td className="py-4 px-4 text-center font-medium">
-                              {order.size}
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              {order.rentalDays ? `${order.rentalDays} ngày` : "-"}
-                            </td>
-                            <td className="py-4 px-4 text-gray-600">
-                              {formatDate(order.rentalDate)}
-                            </td>
-                            <td className="py-4 px-4 text-center">
-                              {getStatusBadge(order.status)}
-                            </td>
-                            <td className="py-4 px-4 text-right">
-                              <span className="font-bold text-[#c1272d]">
-                                {formatPrice(order.totalPrice)}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              <div>
+                                <span className="text-sm text-gray-500">Ngày thuê</span>
+                                <p className="font-medium text-gray-700">
+                                  {formatDate(order.rentalDate)}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-sm text-gray-500">Trạng thái</span>
+                                <div className="mt-1">{getStatusBadge(order.status)}</div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                              <Button
+                                onClick={() => handleViewOrderDetail(order.bookingId)}
+                                variant="outline"
+                                size="sm"
+                                className={actionOutlineButtonClass}
+                              >
+                                <Eye className="w-4 h-4 mr-2" />
+                                Xem chi tiết
+                              </Button>
+                              {order.paymentAction && (
+                                <Button
+                                  onClick={() =>
+                                    handleContinuePayment(
+                                      order.bookingId,
+                                      order.paymentAction.paymentType,
+                                    )
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                  className={actionOutlineButtonClass}
+                                  disabled={
+                                    payingBookingId === Number(order.bookingId) ||
+                                    cancellingBookingId === Number(order.bookingId)
+                                  }
+                                >
+                                  {payingBookingId === Number(order.bookingId)
+                                    ? "Đang chuyển..."
+                                    : order.paymentAction.label}
+                                </Button>
+                              )}
+                              {order.canCancel && (
+                                <Button
+                                  onClick={() =>
+                                    handleDeleteOrder(order.bookingId, order.bookingCode)
+                                  }
+                                  variant="outline"
+                                  size="sm"
+                                  className={actionOutlineButtonClass}
+                                  disabled={
+                                    cancellingBookingId === Number(order.bookingId) ||
+                                    payingBookingId === Number(order.bookingId)
+                                  }
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  {cancellingBookingId === Number(order.bookingId)
+                                    ? "Đang hủy..."
+                                    : "Hủy"}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-6">
+                          <div className="space-y-4">
+                            {order.items.map((item) => (
+                              <div
+                                key={item.rowId}
+                                className="flex items-center gap-4 pb-4 last:pb-0 last:border-0 border-b border-gray-100"
+                              >
+                                <ImageWithFallback
+                                  src={item.image}
+                                  alt={item.productName}
+                                  className="w-20 h-20 object-cover rounded-lg bg-gray-100"
+                                />
+
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                                  <div>
+                                    <p className="text-sm text-gray-500 mb-1">Sản phẩm</p>
+                                    <p className="font-medium text-[#1a1a1a]">{item.productName}</p>
+                                  </div>
+                                  <div className="md:text-center">
+                                    <p className="text-sm text-gray-500 mb-1">Size</p>
+                                    <p className="font-medium text-gray-700">{item.size}</p>
+                                  </div>
+                                  <div className="md:text-center">
+                                    <p className="text-sm text-gray-500 mb-1">Số ngày</p>
+                                    <p className="font-medium text-gray-700">
+                                      {item.rentalDays ? `${item.rentalDays} ngày` : "-"}
+                                    </p>
+                                  </div>
+                                  <div className="md:text-right">
+                                    <p className="text-sm text-gray-500 mb-1">Giá</p>
+                                    <p className="font-medium text-[#c1272d]">
+                                      {formatPrice(item.price)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          <div className="mt-6 pt-4 border-t-2 border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <Package className="w-5 h-5" />
+                                <span className="font-medium">{order.itemCount} sản phẩm</span>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-sm text-gray-500 mb-1">Tổng tiền</p>
+                                <p className="text-2xl font-bold text-[#c1272d]">
+                                  {formatPrice(order.totalPrice)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {!ordersLoading && !ordersError && orderRows.length === 0 && (
+                {!ordersLoading && !ordersError && orderCards.length === 0 && (
                   <div className="text-center py-16">
                     <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                     <p className="text-gray-500">Bạn chưa có đơn thuê nào</p>
@@ -1365,6 +1632,198 @@ export function ProfilePage() {
           </motion.div>
         </div>
       </div>
+
+      {isOrderModalOpen && selectedOrder && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={closeOrderModal}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-luxury p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-2xl font-display text-[#1a1a1a]">
+                Chi tiết đơn hàng {selectedOrder.bookingCode}
+              </h3>
+              <button
+                onClick={closeOrderModal}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+              <div>
+                <span className="text-sm text-gray-500">Ngày thuê</span>
+                <p className="font-medium text-gray-900">
+                  {formatDate(selectedOrder.rentalDate)}
+                </p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500">Ngày trả</span>
+                <p className="font-medium text-gray-900">
+                  {formatDate(selectedOrder.returnDate)}
+                </p>
+              </div>
+              <div>
+                <span className="text-sm text-gray-500">Trạng thái</span>
+                <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h4 className="text-xl font-display text-[#1a1a1a] mb-4">
+                Sản phẩm thuê
+              </h4>
+              <div className="space-y-4">
+                {selectedOrder.items.map((item) => (
+                  <div
+                    key={item.rowId}
+                    className="flex items-center gap-4 pb-4 last:pb-0 last:border-0 border-b border-gray-100"
+                  >
+                    <ImageWithFallback
+                      src={item.image}
+                      alt={item.productName}
+                      className="w-20 h-20 object-cover rounded-lg bg-gray-100"
+                    />
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div>
+                        <p className="text-sm text-gray-500 mb-1">Sản phẩm</p>
+                        <p className="font-medium text-[#1a1a1a]">{item.productName}</p>
+                      </div>
+                      <div className="md:text-center">
+                        <p className="text-sm text-gray-500 mb-1">Size</p>
+                        <p className="font-medium text-gray-700">{item.size}</p>
+                      </div>
+                      <div className="md:text-center">
+                        <p className="text-sm text-gray-500 mb-1">Số ngày</p>
+                        <p className="font-medium text-gray-700">
+                          {item.rentalDays ? `${item.rentalDays} ngày` : "-"}
+                        </p>
+                      </div>
+                      <div className="md:text-right">
+                        <p className="text-sm text-gray-500 mb-1">Giá</p>
+                        <p className="font-medium text-[#c1272d]">{formatPrice(item.price)}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {selectedOrder.services.length > 0 && (
+              <div className="mb-6">
+                <h4 className="text-xl font-display text-[#1a1a1a] mb-4">
+                  Dịch vụ kèm theo
+                </h4>
+                <div className="space-y-3">
+                  {selectedOrder.services.map((service) => (
+                    <div
+                      key={service.svcBookingId}
+                      className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-[#fef9f3] to-white rounded-lg border border-gray-100"
+                    >
+                      <span className="font-medium text-gray-700">{service.name}</span>
+                      <span className="font-medium text-[#c1272d]">
+                        {formatPrice(service.price)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-4 border-t-2 border-gray-200">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between text-gray-600">
+                  <div className="flex items-center gap-2">
+                    <Package className="w-5 h-5" />
+                    <span className="font-medium">
+                      {selectedOrder.itemCount} sản phẩm
+                    </span>
+                  </div>
+                  <span className="font-medium">{formatPrice(selectedOrderItemTotal)}</span>
+                </div>
+
+                {selectedOrder.services.length > 0 && (
+                  <div className="flex items-center justify-between text-gray-600">
+                    <span className="font-medium">Dịch vụ kèm theo</span>
+                    <span className="font-medium">
+                      {formatPrice(selectedOrderServiceTotal)}
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-3 border-t border-gray-200">
+                  <span className="text-lg font-display text-gray-900">Tổng tiền</span>
+                  <span className="text-2xl font-bold text-[#c1272d]">
+                    {formatPrice(selectedOrderTotal)}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-3 px-4 bg-gradient-to-r from-[#d4af37]/10 to-[#c1272d]/10 rounded-lg border-2 border-[#d4af37]/30">
+                  <div>
+                    <span className="font-medium text-gray-900">Tiền cọc (30%)</span>
+                    <p className="text-xs text-gray-500 mt-0.5">Cần thanh toán trước</p>
+                  </div>
+                  <span className="text-xl font-bold text-[#d4af37]">
+                    {formatPrice(selectedOrderDeposit)}
+                  </span>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-col-reverse sm:flex-row sm:justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeOrderModal}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-100"
+                >
+                  Đóng
+                </Button>
+                {selectedOrder.paymentAction && (
+                  <Button
+                    type="button"
+                    onClick={() =>
+                      handleContinuePayment(
+                        selectedOrder.bookingId,
+                        selectedOrder.paymentAction.paymentType,
+                      )
+                    }
+                    variant="outline"
+                    className={actionOutlineButtonClass}
+                    disabled={payingBookingId === Number(selectedOrder.bookingId)}
+                  >
+                    {payingBookingId === Number(selectedOrder.bookingId)
+                      ? "Đang chuyển..."
+                      : selectedOrder.paymentAction.label}
+                  </Button>
+                )}
+                {selectedOrder.canCancel && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() =>
+                      handleDeleteOrder(selectedOrder.bookingId, selectedOrder.bookingCode)
+                    }
+                    className={actionOutlineButtonClass}
+                    disabled={
+                      cancellingBookingId === Number(selectedOrder.bookingId) ||
+                      payingBookingId === Number(selectedOrder.bookingId)
+                    }
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {cancellingBookingId === Number(selectedOrder.bookingId)
+                      ? "Đang hủy..."
+                      : "Hủy"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>

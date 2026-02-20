@@ -100,3 +100,18 @@ export const getMyBookingById = async (
 
   return (res.data as BookingListItemResponse) || {};
 };
+
+export const cancelMyBooking = async (
+  bookingId: number,
+  token?: string | null,
+): Promise<{ message?: string }> => {
+  const res = await api.patch(
+    `/api/Booking/cancel/${bookingId}`,
+    {},
+    {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    },
+  );
+
+  return (res.data as { message?: string }) || {};
+};

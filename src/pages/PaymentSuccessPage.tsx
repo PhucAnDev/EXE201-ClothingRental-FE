@@ -28,10 +28,14 @@ const formatDate = (value?: string | null) => {
 };
 
 const normalizePaymentStatus = (value?: string | null) =>
-  String(value || "").trim().toLowerCase();
+  String(value || "")
+    .trim()
+    .toLowerCase();
 
 const normalizeQueryPaymentType = (value?: string | null): QueryPaymentType => {
-  const normalized = String(value || "").trim().toLowerCase();
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
   return normalized === "full" || normalized === "deposit" ? normalized : "";
 };
 
@@ -41,27 +45,43 @@ const getPaymentStatusBadge = (paymentStatus?: string) => {
   if (normalized === "paid") {
     return {
       label: "Đã thanh toán",
-      className: "bg-green-100 text-green-700",
+      style: {
+        backgroundColor: "#ecfdf3",
+        color: "#15803d",
+        borderColor: "#bbf7d0",
+      },
     };
   }
 
   if (normalized === "depositpaid") {
     return {
       label: "Đã đặt cọc",
-      className: "bg-amber-100 text-amber-700",
+      style: {
+        backgroundColor: "#fffbeb",
+        color: "#b45309",
+        borderColor: "#fde68a",
+      },
     };
   }
 
   if (normalized === "partiallypaid") {
     return {
       label: "Đã thanh toán một phần",
-      className: "bg-blue-100 text-blue-700",
+      style: {
+        backgroundColor: "#eff6ff",
+        color: "#1d4ed8",
+        borderColor: "#bfdbfe",
+      },
     };
   }
 
   return {
     label: "Chờ thanh toán",
-    className: "bg-gray-100 text-gray-700",
+    style: {
+      backgroundColor: "#f3f4f6",
+      color: "#374151",
+      borderColor: "#d1d5db",
+    },
   };
 };
 
@@ -119,12 +139,15 @@ const resolvePaidAmount = (
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [bookingData, setBookingData] = React.useState<BookingListItemResponse | null>(null);
+  const [bookingData, setBookingData] =
+    React.useState<BookingListItemResponse | null>(null);
   const [isLoadingBooking, setIsLoadingBooking] = React.useState(true);
   const [bookingError, setBookingError] = React.useState("");
 
   const bookingId = Number(searchParams.get("bookingId") ?? 0);
-  const queryPaymentType = normalizeQueryPaymentType(searchParams.get("paymentType"));
+  const queryPaymentType = normalizeQueryPaymentType(
+    searchParams.get("paymentType"),
+  );
 
   React.useEffect(() => {
     let isMounted = true;
@@ -138,7 +161,9 @@ export function PaymentSuccessPage() {
 
       const token = localStorage.getItem("authToken");
       if (!token) {
-        setBookingError("Phiên đăng nhập đã hết. Vui lòng đăng nhập lại để xem đơn hàng.");
+        setBookingError(
+          "Phiên đăng nhập đã hết. Vui lòng đăng nhập lại để xem đơn hàng.",
+        );
         setIsLoadingBooking(false);
         return;
       }
@@ -180,9 +205,16 @@ export function PaymentSuccessPage() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center px-6">
         <div className="text-center max-w-lg">
-          <h1 className="text-3xl text-gray-900 mb-4">Không tìm thấy thông tin đơn hàng</h1>
-          <p className="text-gray-600 mb-6">{bookingError || "Vui lòng kiểm tra lại kết quả thanh toán."}</p>
-          <Button onClick={() => navigate("/")} className="bg-red-600 hover:bg-red-700 text-white">
+          <h1 className="text-3xl text-gray-900 mb-4">
+            Không tìm thấy thông tin đơn hàng
+          </h1>
+          <p className="text-gray-600 mb-6">
+            {bookingError || "Vui lòng kiểm tra lại kết quả thanh toán."}
+          </p>
+          <Button
+            onClick={() => navigate("/")}
+            className="bg-red-600 hover:bg-red-700 text-white"
+          >
             Về trang chủ
           </Button>
         </div>
@@ -190,7 +222,9 @@ export function PaymentSuccessPage() {
     );
   }
 
-  const bookingDetails = Array.isArray(bookingData.details) ? bookingData.details : [];
+  const bookingDetails = Array.isArray(bookingData.details)
+    ? bookingData.details
+    : [];
   const serviceBookings = Array.isArray(bookingData.serviceBookings)
     ? bookingData.serviceBookings
     : [];
@@ -205,7 +239,10 @@ export function PaymentSuccessPage() {
   );
 
   const totalRental = toPositiveNumber(bookingData.totalRentalAmount, 0);
-  const totalService = toPositiveNumber(bookingData.totalServiceAmount, totalServiceFromList);
+  const totalService = toPositiveNumber(
+    bookingData.totalServiceAmount,
+    totalServiceFromList,
+  );
   const totalOrder = toPositiveNumber(
     bookingData.totalOrderAmount,
     totalRental + totalService,
@@ -215,19 +252,27 @@ export function PaymentSuccessPage() {
     Math.round(totalOrder * 0.3),
   );
 
-  const normalizedPaymentStatus = normalizePaymentStatus(bookingData.paymentStatus);
+  const normalizedPaymentStatus = normalizePaymentStatus(
+    bookingData.paymentStatus,
+  );
   const paymentStatusBadge = getPaymentStatusBadge(bookingData.paymentStatus);
-  const paidInfo = resolvePaidAmount(normalizedPaymentStatus, totalOrder, totalDeposit);
+  const paidInfo = resolvePaidAmount(
+    normalizedPaymentStatus,
+    totalOrder,
+    totalDeposit,
+  );
 
   const snapshot = parseAddressSnapshot(bookingData.addressText);
   const rentalDate =
-    formatDate(bookingDetails[0]?.startTime) || formatDate(bookingData.bookingDate) || "--";
+    formatDate(bookingDetails[0]?.startTime) ||
+    formatDate(bookingData.bookingDate) ||
+    "--";
   const packageName = serviceBookings
     .map((item) => item.servicePackageName)
     .filter(Boolean)
     .join(", ");
 
-  const orderNumber = `BK${String(bookingData.bookingId || bookingId).padStart(6, "0")}`;
+  const displayBookingId = String(bookingData.bookingId || bookingId || "");
   const transactionNote =
     queryPaymentType === "full"
       ? "(Thanh toán toàn bộ)"
@@ -250,9 +295,21 @@ export function PaymentSuccessPage() {
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto text-center">
-          <div className="inline-block mb-6 relative">
-            <div className="absolute inset-0 bg-green-500/20 blur-3xl rounded-full" />
-            <CheckCircle2 className="w-24 h-24 text-green-500 relative animate-pulse" strokeWidth={2} />
+          <div className="mb-6 relative inline-flex h-24 w-24 items-center justify-center">
+            <div className="absolute inset-0 rounded-full bg-[#00d26a]/20 blur-2xl" />
+            <CheckCircle2
+              className="absolute h-24 w-24 animate-ping"
+              strokeWidth={2}
+              style={{ color: "rgba(0, 210, 106, 0.45)" }}
+            />
+            <CheckCircle2
+              className="relative h-24 w-24"
+              strokeWidth={2.5}
+              style={{
+                color: "#00d26a",
+                filter: "drop-shadow(0 0 10px rgba(0, 210, 106, 0.45))",
+              }}
+            />
           </div>
           <h1 className="text-5xl text-white mb-4">Thanh Toán Thành Công</h1>
           <p className="text-xl text-white/90 max-w-2xl mx-auto">
@@ -267,11 +324,16 @@ export function PaymentSuccessPage() {
             <div className="flex items-center justify-between mb-6 pb-6 border-b border-gray-200">
               <div>
                 <p className="text-sm text-gray-600 mb-1">Mã đơn hàng</p>
-                <p className="text-2xl text-gray-900">#{orderNumber}</p>
+                <p className="text-2xl text-gray-900">{displayBookingId || "--"}</p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-600 mb-1">Trạng thái thanh toán</p>
-                <span className={`inline-block px-4 py-2 rounded-full ${paymentStatusBadge.className}`}>
+                <p className="text-sm text-gray-600 mb-1">
+                  Trạng thái thanh toán
+                </p>
+                <span
+                  className="inline-flex items-center rounded-full border px-4 py-2 text-sm font-semibold"
+                  style={paymentStatusBadge.style}
+                >
                   {paymentStatusBadge.label}
                 </span>
               </div>
@@ -290,7 +352,9 @@ export function PaymentSuccessPage() {
                 </div>
                 {snapshot.address && (
                   <div className="md:col-span-2">
-                    <p className="text-sm text-gray-600 mb-1">Địa chỉ nhận hàng</p>
+                    <p className="text-sm text-gray-600 mb-1">
+                      Địa chỉ nhận hàng
+                    </p>
                     <p className="text-gray-900">{snapshot.address}</p>
                   </div>
                 )}
@@ -307,40 +371,60 @@ export function PaymentSuccessPage() {
                 </div>
 
                 <div className="space-y-3">
-                  {bookingDetails.map((detail: BookingDetailResponse, index: number) => (
-                    <div key={detail.detailId ?? index} className="flex gap-4 p-4 bg-gray-50 rounded-lg">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
-                        <ImageWithFallback
-                          src={detail.outfitImageUrl || ""}
-                          alt={detail.outfitName || "Trang phục"}
-                          className="w-full h-full object-cover"
-                        />
+                  {bookingDetails.map(
+                    (detail: BookingDetailResponse, index: number) => (
+                      <div
+                        key={detail.detailId ?? index}
+                        className="flex gap-4 p-4 bg-gray-50 rounded-lg"
+                      >
+                        <div className="w-20 h-20 rounded-lg overflow-hidden flex-shrink-0">
+                          <ImageWithFallback
+                            src={detail.outfitImageUrl || ""}
+                            alt={detail.outfitName || "Trang phục"}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-gray-900 mb-1">
+                            {detail.outfitName || "Trang phục"}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {detail.outfitType || "Trang phục"}
+                          </p>
+                          <p className="text-sm text-gray-700 mt-1">
+                            <span className="font-medium">Size:</span>{" "}
+                            {detail.outfitSizeLabel || "--"}
+                          </p>
+                          {detail.rentalDays ? (
+                            <p className="text-xs text-gray-500 mt-1">
+                              {detail.rentalDays} ngày
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-600">
+                            {formatCurrency(
+                              toPositiveNumber(detail.unitPrice, 0),
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-gray-900 mb-1">{detail.outfitName || "Trang phục"}</h3>
-                        <p className="text-sm text-gray-600">{detail.outfitType || "Trang phục"}</p>
-                        <p className="text-sm text-gray-700 mt-1">
-                          <span className="font-medium">Size:</span> {detail.outfitSizeLabel || "--"}
-                        </p>
-                        {detail.rentalDays ? (
-                          <p className="text-xs text-gray-500 mt-1">{detail.rentalDays} ngày</p>
-                        ) : null}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-red-600">{formatCurrency(toPositiveNumber(detail.unitPrice, 0))}</p>
-                      </div>
-                    </div>
-                  ))}
+                    ),
+                  )}
                 </div>
 
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Chi phí thuê:</span>
-                    <span className="text-gray-900">{formatCurrency(totalRental)}</span>
+                    <span className="text-gray-900">
+                      {formatCurrency(totalRental)}
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Tiền cọc:</span>
-                    <span className="text-gray-900">{formatCurrency(totalDeposit)}</span>
+                    <span className="text-gray-900">
+                      {formatCurrency(totalDeposit)}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -360,7 +444,9 @@ export function PaymentSuccessPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Chi phí dịch vụ:</span>
-                    <span className="text-gray-900">{formatCurrency(totalService)}</span>
+                    <span className="text-gray-900">
+                      {formatCurrency(totalService)}
+                    </span>
                   </div>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
@@ -373,20 +459,28 @@ export function PaymentSuccessPage() {
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900">Tổng chi phí dịch vụ:</span>
-                  <span className="text-gray-900 text-xl">{formatCurrency(totalOrder)}</span>
+                  <span className="text-gray-900 text-xl">
+                    {formatCurrency(totalOrder)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900">Tổng cọc:</span>
-                  <span className="text-gray-900 text-xl">{formatCurrency(totalDeposit)}</span>
+                  <span className="text-gray-900 text-xl">
+                    {formatCurrency(totalDeposit)}
+                  </span>
                 </div>
                 <div className="h-px bg-gray-300 my-3" />
                 <div className="flex justify-between items-center">
                   <span className="text-gray-900">{paidInfo.label}:</span>
                   <span className="text-red-600 text-3xl">
-                    {paidInfo.unknown ? "Đang cập nhật" : formatCurrency(paidInfo.value)}
+                    {paidInfo.unknown
+                      ? "Đang cập nhật"
+                      : formatCurrency(paidInfo.value)}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 text-right">{transactionNote}</p>
+                <p className="text-sm text-gray-500 text-right">
+                  {transactionNote}
+                </p>
               </div>
             </div>
           </div>
@@ -398,12 +492,15 @@ export function PaymentSuccessPage() {
             <ul className="text-sm text-blue-700 space-y-2">
               <li>• Nhân viên sẽ liên hệ trong 24h để xác nhận đơn hàng</li>
               {includeRental && (
-                <li>• Trang phục sẽ được giao đến địa chỉ của bạn trước ngày thuê 1 ngày</li>
+                <li>
+                  • Trang phục sẽ được giao đến địa chỉ của bạn trước ngày thuê
+                  1 ngày
+                </li>
               )}
               {includePhotoshoot && (
                 <li>• Đổi lịch chụp 1 lần miễn phí nếu báo trước 24h</li>
               )}
-              <li>• Mã đơn hàng #{orderNumber} đã được ghi nhận</li>
+              <li>• Mã đơn hàng {displayBookingId || "--"} đã được ghi nhận</li>
             </ul>
           </div>
 
@@ -429,4 +526,3 @@ export function PaymentSuccessPage() {
     </div>
   );
 }
-
