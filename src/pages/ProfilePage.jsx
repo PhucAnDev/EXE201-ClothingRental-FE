@@ -689,6 +689,37 @@ export function ProfilePage() {
       price: Number(service?.totalPrice) || 0,
     }));
 
+    const itemTotalFromDetails = items.reduce(
+      (sum, item) => sum + (Number(item?.price) || 0),
+      0,
+    );
+    const serviceTotalFromList = services.reduce(
+      (sum, service) => sum + (Number(service?.price) || 0),
+      0,
+    );
+    const hasApiTotalOrderAmount =
+      booking?.totalOrderAmount !== null &&
+      booking?.totalOrderAmount !== undefined &&
+      booking?.totalOrderAmount !== "";
+    const totalRentalForDisplay =
+      booking?.totalRentalAmount !== null &&
+      booking?.totalRentalAmount !== undefined &&
+      booking?.totalRentalAmount !== ""
+        ? Number(booking?.totalRentalAmount) || 0
+        : itemTotalFromDetails;
+    const totalServiceForDisplay =
+      booking?.totalServiceAmount !== null &&
+      booking?.totalServiceAmount !== undefined &&
+      booking?.totalServiceAmount !== ""
+        ? Number(booking?.totalServiceAmount) || 0
+        : serviceTotalFromList;
+    const totalSurchargeForDisplay = Number(booking?.totalSurcharge) || 0;
+    const fallbackTotalOrderAmount =
+      totalRentalForDisplay + totalServiceForDisplay + totalSurchargeForDisplay;
+    const totalOrderAmountForDisplay = hasApiTotalOrderAmount
+      ? Number(booking?.totalOrderAmount) || 0
+      : fallbackTotalOrderAmount;
+
     return {
       bookingId: booking?.bookingId,
       bookingCode: formatBookingCode(booking?.bookingId),
@@ -701,7 +732,7 @@ export function ProfilePage() {
         booking?.paymentStatus,
         details[0]?.status,
       ),
-      totalPrice: Number(booking?.totalOrderAmount) || 0,
+      totalPrice: totalOrderAmountForDisplay,
       itemCount: details.length || items.length,
       items,
       services,

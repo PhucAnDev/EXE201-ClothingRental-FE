@@ -9,6 +9,7 @@ import {
   type BookingListItemResponse,
   type ServiceBookingResponse,
 } from "../features/booking/bookingService";
+import { syncPaymentStatusByOrderCode } from "../features/payment/paymentService";
 
 type QueryPaymentType = "deposit" | "full" | "";
 
@@ -37,6 +38,38 @@ const normalizeQueryPaymentType = (value?: string | null): QueryPaymentType => {
     .trim()
     .toLowerCase();
   return normalized === "full" || normalized === "deposit" ? normalized : "";
+};
+
+const normalizeQueryStatus = (value?: string | null) =>
+  String(value || "")
+    .trim()
+    .toLowerCase();
+
+const normalizeQueryCode = (value?: string | null) =>
+  String(value || "")
+    .trim()
+    .toUpperCase();
+
+const hasSuccessfulRedirectHint = (status: string, code: string) =>
+  code === "00" || status === "paid" || status === "success";
+
+const isPaymentStatusSyncedForSuccessPage = (
+  paymentStatus: string,
+  paymentType: QueryPaymentType,
+) => {
+  if (paymentType === "full") {
+    return paymentStatus === "paid";
+  }
+
+  if (paymentType === "deposit") {
+    return (
+      paymentStatus === "depositpaid" ||
+      paymentStatus === "partiallypaid" ||
+      paymentStatus === "paid"
+    );
+  }
+
+  return paymentStatus !== "" && paymentStatus !== "unpaid";
 };
 
 const getPaymentStatusBadge = (paymentStatus?: string) => {
@@ -148,11 +181,26 @@ export function PaymentSuccessPage() {
   const queryPaymentType = normalizeQueryPaymentType(
     searchParams.get("paymentType"),
   );
+  const queryStatus = normalizeQueryStatus(searchParams.get("status"));
+  const queryCode = normalizeQueryCode(searchParams.get("code"));
+  const queryOrderCode = Number(searchParams.get("orderCode") ?? 0);
+  const shouldPollPaymentSync = hasSuccessfulRedirectHint(queryStatus, queryCode);
 
   React.useEffect(() => {
     let isMounted = true;
+    let pollingTimer: number | null = null;
+    let pollAttempts = 0;
+    const maxPollAttempts = 10;
+    const pollIntervalMs = 2000;
 
-    const fetchBooking = async () => {
+    const clearPollingTimer = () => {
+      if (pollingTimer !== null) {
+        window.clearTimeout(pollingTimer);
+        pollingTimer = null;
+      }
+    };
+
+    const fetchBooking = async (showLoading = false) => {
       if (!Number.isFinite(bookingId) || bookingId <= 0) {
         setBookingError("Không tìm thấy mã đơn hàng trong kết quả thanh toán.");
         setIsLoadingBooking(false);
@@ -168,13 +216,45 @@ export function PaymentSuccessPage() {
         return;
       }
 
-      setIsLoadingBooking(true);
-      setBookingError("");
+      if (showLoading) {
+        setIsLoadingBooking(true);
+        setBookingError("");
+      }
 
       try {
+        if (
+          shouldPollPaymentSync &&
+          Number.isFinite(queryOrderCode) &&
+          queryOrderCode > 0
+        ) {
+          try {
+            await syncPaymentStatusByOrderCode(queryOrderCode, token);
+          } catch {
+            // Ignore sync errors and continue polling booking API.
+          }
+        }
+
         const response = await getMyBookingById(bookingId, token);
         if (!isMounted) return;
         setBookingData(response);
+        setBookingError("");
+
+        const fetchedPaymentStatus = normalizePaymentStatus(response?.paymentStatus);
+        const shouldContinuePolling =
+          shouldPollPaymentSync &&
+          !isPaymentStatusSyncedForSuccessPage(
+            fetchedPaymentStatus,
+            queryPaymentType,
+          ) &&
+          pollAttempts < maxPollAttempts;
+
+        if (shouldContinuePolling) {
+          clearPollingTimer();
+          pollAttempts += 1;
+          pollingTimer = window.setTimeout(() => {
+            void fetchBooking(false);
+          }, pollIntervalMs);
+        }
       } catch (error: any) {
         if (!isMounted) return;
         const message =
@@ -182,16 +262,24 @@ export function PaymentSuccessPage() {
           "Không thể tải chi tiết đơn hàng từ hệ thống.";
         setBookingError(message);
       } finally {
-        if (isMounted) setIsLoadingBooking(false);
+        if (showLoading && isMounted) setIsLoadingBooking(false);
       }
     };
 
-    void fetchBooking();
+    void fetchBooking(true);
 
     return () => {
       isMounted = false;
+      clearPollingTimer();
     };
-  }, [bookingId]);
+  }, [
+    bookingId,
+    queryCode,
+    queryOrderCode,
+    queryPaymentType,
+    queryStatus,
+    shouldPollPaymentSync,
+  ]);
 
   if (isLoadingBooking) {
     return (
@@ -255,9 +343,22 @@ export function PaymentSuccessPage() {
   const normalizedPaymentStatus = normalizePaymentStatus(
     bookingData.paymentStatus,
   );
-  const paymentStatusBadge = getPaymentStatusBadge(bookingData.paymentStatus);
+  const shouldApplyRedirectSuccessFallback =
+    shouldPollPaymentSync &&
+    !isPaymentStatusSyncedForSuccessPage(
+      normalizedPaymentStatus,
+      queryPaymentType,
+    );
+  const effectivePaymentStatus = shouldApplyRedirectSuccessFallback
+    ? queryPaymentType === "full"
+      ? "paid"
+      : queryPaymentType === "deposit"
+        ? "depositpaid"
+        : normalizedPaymentStatus
+    : normalizedPaymentStatus;
+  const paymentStatusBadge = getPaymentStatusBadge(effectivePaymentStatus);
   const paidInfo = resolvePaidAmount(
-    normalizedPaymentStatus,
+    effectivePaymentStatus,
     totalOrder,
     totalDeposit,
   );
@@ -278,7 +379,7 @@ export function PaymentSuccessPage() {
       ? "(Thanh toán toàn bộ)"
       : queryPaymentType === "deposit"
         ? "(Thanh toán cọc)"
-        : normalizedPaymentStatus === "paid"
+        : effectivePaymentStatus === "paid"
           ? "(Đơn hàng đã thanh toán đủ)"
           : "(Đơn hàng đã ghi nhận thanh toán)";
 

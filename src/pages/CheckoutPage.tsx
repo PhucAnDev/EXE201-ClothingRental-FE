@@ -35,6 +35,7 @@ import {
   createBooking,
   type BookingResponse,
   type CreateBookingItemPayload,
+  type CreateBookingPayload,
 } from "../features/booking/bookingService";
 import {
   createPaymentUrl,
@@ -42,6 +43,7 @@ import {
 } from "../features/payment/paymentService";
 
 const ORDER_DEPOSIT_RATE = 0.3;
+const DEFAULT_RENTAL_PACKAGE_ID = 1;
 
 const normalizeValue = (value) => String(value ?? "").toLowerCase();
 
@@ -107,6 +109,47 @@ const normalizeIsDefault = (value: UserAddressItem["isDefault"]) => {
 const toPositiveNumber = (value, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+const roundCurrency = (value, fallback = 0) =>
+  Math.round(toPositiveNumber(value, fallback));
+
+const buildIsoDate = (offsetDays = 0) => {
+  const date = new Date();
+  date.setSeconds(0, 0);
+  date.setDate(date.getDate() + offsetDays);
+  return date.toISOString();
+};
+
+const distributeIntegerAmount = (totalAmount, weights) => {
+  const normalizedTotal = Math.max(0, Math.round(Number(totalAmount) || 0));
+  const safeWeights = Array.isArray(weights)
+    ? weights.map((weight) => Math.max(0, Number(weight) || 0))
+    : [];
+
+  if (normalizedTotal <= 0 || safeWeights.length === 0) {
+    return safeWeights.map(() => 0);
+  }
+
+  const weightSum = safeWeights.reduce((sum, weight) => sum + weight, 0);
+  if (weightSum <= 0) {
+    const fallback = safeWeights.map(() => 0);
+    fallback[0] = normalizedTotal;
+    return fallback;
+  }
+
+  const allocations = safeWeights.map((weight) =>
+    Math.floor((normalizedTotal * weight) / weightSum),
+  );
+  let remainder =
+    normalizedTotal - allocations.reduce((sum, amount) => sum + amount, 0);
+
+  for (let i = 0; i < allocations.length && remainder > 0; i += 1) {
+    allocations[i] += 1;
+    remainder -= 1;
+  }
+
+  return allocations;
 };
 
 const normalizePrefillOutfit = (outfit) => {
@@ -332,29 +375,88 @@ export function CheckoutPage() {
       return;
     }
 
-    const bookingItems: CreateBookingItemPayload[] = includeRental
+    if (!includeRental && hasSelectedServicePackages) {
+      alert(
+        "Hiện backend đang yêu cầu đơn hàng phải có ít nhất 1 trang phục thuê. Vui lòng chọn thêm trang phục.",
+      );
+      return;
+    }
+
+    if (selectedServicePackages.length > 1) {
+      alert(
+        "Hiện backend chỉ hỗ trợ 1 gói dịch vụ cho mỗi đơn. Vui lòng chọn 1 gói dịch vụ.",
+      );
+      return;
+    }
+
+    const rentalStartTimeIso = buildIsoDate(0);
+    const rentalEndTimeIso = buildIsoDate(Math.max(1, Number(rentalDays) || 1));
+    const selectedServicePackage = hasSelectedServicePackages
+      ? selectedServicePackages[0]
+      : null;
+    const serviceTotalForBooking = roundCurrency(
+      selectedServicePackage?.basePrice,
+      0,
+    );
+    const depositTargetForBooking = roundCurrency(
+      rentalTotal + serviceTotalForBooking,
+      0,
+    )
+      ? roundCurrency((rentalTotal + serviceTotalForBooking) * ORDER_DEPOSIT_RATE)
+      : 0;
+
+    const draftBookingItems: CreateBookingItemPayload[] = includeRental
       ? selectedOutfits.map((outfit) => ({
           outfitSizeId: resolveOutfitSizeId(outfit),
+          rentalPackageId: DEFAULT_RENTAL_PACKAGE_ID,
+          startTime: rentalStartTimeIso,
+          endTime: rentalEndTimeIso,
+          unitPrice: roundCurrency(
+            toPositiveNumber(outfit?.price, 0) * Math.max(1, Number(rentalDays) || 1),
+            0,
+          ),
+          depositAmount: 0,
+          surcharge: 0,
         }))
       : [];
 
-    if (includeRental && bookingItems.length === 0) {
+    if (includeRental && draftBookingItems.length === 0) {
       alert("Vui lòng chọn ít nhất một trang phục.");
       return;
     }
 
-    if (bookingItems.some((item) => item.outfitSizeId <= 0)) {
+    if (draftBookingItems.some((item) => item.outfitSizeId <= 0)) {
       alert("Không xác định được size trang phục. Vui lòng chọn lại size.");
       return;
     }
 
-    const payload = {
+    const itemWeights = draftBookingItems.map((item) =>
+      roundCurrency(item.unitPrice, 0),
+    );
+    const allocatedDeposits = distributeIntegerAmount(
+      depositTargetForBooking,
+      itemWeights,
+    );
+    const bookingItems = draftBookingItems.map((item, index) => ({
+      ...item,
+      depositAmount: allocatedDeposits[index] ?? 0,
+    }));
+
+    const servicePayload =
+      selectedServicePackage && Number(selectedServicePackage.servicePkgId) > 0
+        ? {
+            servicePkgId: Number(selectedServicePackage.servicePkgId),
+            serviceTime: rentalStartTimeIso,
+            totalPrice: serviceTotalForBooking,
+            addons: [],
+          }
+        : undefined;
+
+    const payload: CreateBookingPayload = {
       addressId: selectedAddressId,
       rentalDays: Math.max(1, Number(rentalDays) || 1),
       items: bookingItems,
-      servicePackageIds: hasSelectedServicePackages
-        ? selectedServicePackageIds
-        : [],
+      service: servicePayload,
     };
 
     setIsCreatingOrder(true);
