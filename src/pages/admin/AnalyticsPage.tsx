@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
   const getMonthsFromTimeRange = (range: string): number => {
     switch (range) {
       case "week":
-        return 1;
+        return 0.25; // ~1 week in months (7 days)
       case "month":
         return 1;
       case "quarter":
@@ -106,7 +106,7 @@ export default function AnalyticsPage() {
       case "year":
         return 12;
       default:
-        return 6;
+        return 1;
     }
   };
 
@@ -117,19 +117,29 @@ export default function AnalyticsPage() {
         setLoading(true);
         setError(null);
         const months = getMonthsFromTimeRange(timeRange);
+        console.log(
+          `[Analytics] Fetching dashboard data for ${timeRange} (${months} months)...`,
+        );
+
         const data = await getAdminDashboard(
           {
-            months,
+            months: Math.ceil(months), // Backend expects integer
             topProducts: 5,
             activities: 10,
             categoryMetric,
           },
           token,
         );
+
+        console.log("[Analytics] Dashboard data loaded:", data);
         setDashboardData(data);
       } catch (err: any) {
-        console.error("Error fetching dashboard data:", err);
-        setError(err.message || "Không thể tải dữ liệu thống kê");
+        console.error("[Analytics] Error fetching dashboard data:", err);
+        const errorMessage =
+          err?.response?.data?.message ||
+          err?.message ||
+          "Không thể tải dữ liệu thống kê";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
@@ -272,6 +282,21 @@ export default function AnalyticsPage() {
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-gray-900 font-semibold mb-2">Lỗi tải dữ liệu</p>
             <p className="text-gray-600">{error}</p>
+          </div>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  // No data state
+  if (!dashboardData) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-96">
+          <div className="text-center">
+            <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-900 font-semibold mb-2">Không có dữ liệu</p>
+            <p className="text-gray-600">Không thể tải dữ liệu thống kê</p>
           </div>
         </div>
       </AdminLayout>
@@ -424,8 +449,8 @@ export default function AnalyticsPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name}\n${(percent * 100).toFixed(0)}%`
+                    label={(entry) =>
+                      `${entry.name} ${entry.percent.toFixed(1)}%`
                     }
                     outerRadius={100}
                     fill="#8884d8"

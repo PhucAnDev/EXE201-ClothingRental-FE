@@ -1,11 +1,20 @@
 import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { toast } from "sonner";
 import { AdminLayout } from "../../components/admin/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "../../components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -282,9 +291,7 @@ export default function UsersPage() {
     }
   };
 
-  const handleConfirmDelete = async (
-    event?: MouseEvent<HTMLButtonElement>,
-  ) => {
+  const handleConfirmDelete = async (event?: MouseEvent<HTMLButtonElement>) => {
     event?.preventDefault();
 
     if (!deleteTarget?.userId) {
@@ -302,8 +309,13 @@ export default function UsersPage() {
       setDeleteOpen(false);
       setDeleteTarget(null);
       toast.success("Xóa người dùng thành công!");
-    } catch (err) {
-      toast.error("Xóa người dùng thất bại.");
+    } catch (err: any) {
+      console.error("Delete user error:", err);
+      const errorMsg =
+        err?.response?.data?.message ||
+        err?.message ||
+        "Xóa người dùng thất bại.";
+      toast.error(errorMsg);
     } finally {
       setDeleteLoading(false);
     }
@@ -463,7 +475,7 @@ export default function UsersPage() {
                           {getRoleBadge(user)}
                         </TableCell>
                         <TableCell className="px-6 py-4 text-gray-700">
-                          --
+                          {user.totalOrders ?? 0}
                         </TableCell>
                         <TableCell className="px-6 py-4">
                           {getStatusBadge(user)}
@@ -511,8 +523,8 @@ export default function UsersPage() {
         <Card className="border-0 shadow-md">
           <CardContent className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <p className="text-sm text-gray-600">
-              Hiển thị {filteredUsers.length ? startIndex + 1 : 0}-{endIndex} của{" "}
-              {filteredUsers.length} người dùng
+              Hiển thị {filteredUsers.length ? startIndex + 1 : 0}-{endIndex}{" "}
+              của {filteredUsers.length} người dùng
             </p>
             <div className="flex flex-wrap items-center gap-2">
               <Button
@@ -589,7 +601,9 @@ export default function UsersPage() {
                       alt={detailUser.fullName || detailUser.email || "User"}
                     />
                     <AvatarFallback className="bg-red-600 text-white text-xl font-semibold">
-                      {(detailUser.fullName || detailUser.email || "U").charAt(0)}
+                      {(detailUser.fullName || detailUser.email || "U").charAt(
+                        0,
+                      )}
                     </AvatarFallback>
                   </Avatar>
                   <div>
@@ -752,7 +766,11 @@ export default function UsersPage() {
                     alt={deleteTarget.fullName || deleteTarget.email || "User"}
                   />
                   <AvatarFallback className="bg-red-50 text-red-600 font-semibold">
-                    {(deleteTarget.fullName || deleteTarget.email || "U").charAt(0)}
+                    {(
+                      deleteTarget.fullName ||
+                      deleteTarget.email ||
+                      "U"
+                    ).charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div>

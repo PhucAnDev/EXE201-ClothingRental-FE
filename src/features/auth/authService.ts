@@ -118,6 +118,7 @@ export interface UserDetailResponse {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  totalOrders?: number;
 }
 
 export type UserListResponse = UserDetailResponse[];
