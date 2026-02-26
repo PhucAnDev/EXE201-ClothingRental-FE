@@ -42,10 +42,10 @@ export function LoginDialog({
       onOpenChange(false);
       toast.success("Đăng nhập thành công!", { duration: 5000 });
 
-      // Navigate based on roleName from backend
-      const roleName = (user &&
-        (user.roleName || user.role || user.roleId)) as any;
-      if (user && user.roleName === "Admin") {
+      // Navigate based on roleId from backend
+      // roleId 1, 2 = admin -> /admin/dashboard
+      // roleId 3 = customer -> /
+      if (user && (user.roleId === 1 || user.roleId === 2)) {
         navigate("/admin/dashboard");
       } else {
         // default customer landing -> go to main user home page

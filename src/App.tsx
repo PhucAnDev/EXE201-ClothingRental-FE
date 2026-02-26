@@ -7,6 +7,7 @@ import {
 } from "react-router-dom";
 import { Navigation } from "./components/Navigation";
 import { ContactFloat } from "./components/ContactFloat";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 import { Toaster } from "./components/ui/sonner";
 import { HomePage } from "./pages/HomePage";
 import { CollectionPage } from "./pages/CollectionPage";
@@ -68,14 +69,63 @@ function AppContent() {
         <Route path="/payment-success" element={<PaymentSuccessPage />} />
         <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin/dashboard" element={<DashboardPage />} />
-        <Route path="/admin/products" element={<ProductsPage />} />
-        <Route path="/admin/users" element={<UsersPage />} />
-        <Route path="/admin/terms" element={<TermsPage />} />
-        <Route path="/admin/system" element={<SystemPage />} />
-        <Route path="/admin/orders" element={<OrdersPage />} />
-        <Route path="/admin/analytics" element={<AnalyticsPage />} />
+        {/* Admin Routes - Only accessible by roleId 1 and 2 */}
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <ProductsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/terms"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <TermsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/system"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <SystemPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/orders"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <OrdersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/analytics"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <AnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
