@@ -1,5 +1,12 @@
+# Dependencies
 node_modules/
+**/node_modules/
+/.pnp
+.pnp.js
+
+# Vite
 .vite/
+**/vite/deps/
 dist/
 build/
 coverage/
