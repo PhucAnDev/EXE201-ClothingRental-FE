@@ -7,7 +7,10 @@ interface ProtectedRouteProps {
   allowedRoles?: number[];
 }
 
-export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
+export function ProtectedRoute({
+  children,
+  allowedRoles,
+}: ProtectedRouteProps) {
   const { currentUser } = useSelector((state: RootState) => state.auth);
 
   // If no user is logged in, redirect to home
