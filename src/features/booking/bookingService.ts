@@ -3,14 +3,30 @@ import { api } from "../../api/client";
 export interface CreateBookingItemPayload {
   outfitSizeId: number;
   rentalPackageId?: number;
-  startTime?: string;
+  startTime: string;
+  endTime?: string;
+  unitPrice?: number;
+  depositAmount?: number;
+  surcharge?: number;
+}
+
+export interface CreateBookingServiceAddonPayload {
+  addonId: number;
+  priceAtBooking?: number;
+}
+
+export interface CreateBookingServicePayload {
+  servicePkgId?: number;
+  serviceTime?: string;
+  totalPrice?: number;
+  addons?: CreateBookingServiceAddonPayload[];
 }
 
 export interface CreateBookingPayload {
   addressId: number;
   rentalDays?: number;
   items?: CreateBookingItemPayload[];
-  servicePackageIds?: number[];
+  service?: CreateBookingServicePayload;
 }
 
 export interface BookingResponse {
@@ -68,6 +84,32 @@ export interface BookingListItemResponse extends BookingResponse {
   serviceBookings?: ServiceBookingResponse[];
 }
 
+type BookingApiResponse = BookingListItemResponse & {
+  services?: ServiceBookingResponse[];
+  Services?: ServiceBookingResponse[];
+};
+
+const normalizeBooking = (value: unknown): BookingListItemResponse => {
+  const booking =
+    value && typeof value === "object"
+      ? ({ ...(value as BookingApiResponse) } as BookingApiResponse)
+      : ({} as BookingApiResponse);
+
+  const normalizedServiceBookings = Array.isArray(booking.serviceBookings)
+    ? booking.serviceBookings
+    : Array.isArray(booking.services)
+      ? booking.services
+      : Array.isArray(booking.Services)
+        ? booking.Services
+        : undefined;
+
+  if (normalizedServiceBookings) {
+    booking.serviceBookings = normalizedServiceBookings;
+  }
+
+  return booking;
+};
+
 export const createBooking = async (
   payload: CreateBookingPayload,
   token?: string | null,
@@ -83,11 +125,13 @@ export const getMyBookings = async (
   token?: string | null,
 ): Promise<BookingListItemResponse[]> => {
   const res = await api.get("/api/Booking/get-all", {
-    params: { includeDetails: true },
+    params: { includeDetails: true, includeServices: true },
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
-  return (res.data as BookingListItemResponse[]) || [];
+  return Array.isArray(res.data)
+    ? res.data.map(normalizeBooking)
+    : [];
 };
 
 export const getMyBookingById = async (
@@ -98,7 +142,7 @@ export const getMyBookingById = async (
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
 
-  return (res.data as BookingListItemResponse) || {};
+  return normalizeBooking(res.data);
 };
 
 export const cancelMyBooking = async (
