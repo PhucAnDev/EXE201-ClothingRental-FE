@@ -30,6 +30,7 @@ import TermsPage from "./pages/admin/TermsPage";
 import SystemPage from "./pages/admin/SystemPage";
 import OrdersPage from "./pages/admin/OrdersPage";
 import AnalyticsPage from "./pages/admin/AnalyticsPage";
+import OrderDetailPage from "./pages/admin/OrderDetailPage";
 
 function AppContent() {
   const location = useLocation();
@@ -76,6 +77,7 @@ function AppContent() {
         <Route path="/admin/system" element={<SystemPage />} />
         <Route path="/admin/orders" element={<OrdersPage />} />
         <Route path="/admin/analytics" element={<AnalyticsPage />} />
+        <Route path="/admin/orders/:id" element={<OrderDetailPage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
