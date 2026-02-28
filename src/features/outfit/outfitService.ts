@@ -15,6 +15,7 @@ export interface OutfitItem {
   totalImages?: number;
   totalSizes?: number;
   availableSizes?: number;
+  totalStock?: number;
   primaryImageUrl?: string | null;
   averageRating?: number | null;
   totalReviews?: number;

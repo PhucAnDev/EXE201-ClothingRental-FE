@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { AdminLayout } from "../../components/admin/AdminLayout";
-import { Card, CardContent, CardHeader, CardTitle } from "../../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Badge } from "../../components/ui/badge";
@@ -23,66 +28,88 @@ import {
   XCircle,
   Filter,
 } from "lucide-react";
+import {
+  getOutfits,
+  type OutfitItem,
+} from "../../features/outfit/outfitService";
+import { toast } from "sonner";
 
-const products = [
-  {
-    id: 1,
-    name: "Áo dài cách tân hoa sen",
-    category: "Áo dài cách tân",
-    price: "2,500,000đ",
-    stock: 5,
-    image:
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=400&h=400&fit=crop",
-  },
-  {
-    id: 2,
-    name: "Áo dài truyền thống đỏ",
-    category: "Áo dài truyền thống",
-    price: "3,000,000đ",
-    stock: 3,
-    image:
-      "https://images.unsplash.com/photo-1544441892-794166f1e3be?w=400&h=400&fit=crop",
-  },
-  {
-    id: 3,
-    name: "Áo dài cưới vàng kim",
-    category: "Áo dài cưới",
-    price: "5,000,000đ",
-    stock: 0,
-    image:
-      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=400&fit=crop",
-  },
-  {
-    id: 4,
-    name: "Áo dài tứ thân xanh",
-    category: "Áo dài tứ thân",
-    price: "4,500,000đ",
-    stock: 2,
-    image:
-      "https://images.unsplash.com/photo-1610652490934-2c814a7b6f4f?w=400&h=400&fit=crop",
-  },
-];
+interface ProductDisplay {
+  id: number;
+  name: string;
+  category: string;
+  price: string;
+  stock: number;
+  image: string;
+  status: string;
+}
 
 export default function ProductsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [products, setProducts] = useState<ProductDisplay[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const pageSize = 10;
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchProducts = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const token = localStorage.getItem("authToken");
+        const res = await getOutfits(token);
+
+        if (isMounted && res.data) {
+          // Map outfit data to product display format
+          const mappedProducts: ProductDisplay[] = res.data.map(
+            (outfit: OutfitItem) => ({
+              id: outfit.outfitId ?? 0,
+              name: outfit.name ?? "Chưa có tên",
+              category: outfit.categoryName ?? outfit.type ?? "Chưa phân loại",
+              price: outfit.baseRentalPrice
+                ? `${outfit.baseRentalPrice.toLocaleString("vi-VN")}đ`
+                : "0đ",
+              stock: outfit.totalStock ?? 0,
+              image:
+                outfit.primaryImageUrl ?? "https://via.placeholder.com/400",
+              status: outfit.status ?? "available",
+            }),
+          );
+          setProducts(mappedProducts);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError("Không thể tải danh sách sản phẩm.");
+          toast.error("Không thể tải danh sách sản phẩm");
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredProducts = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return products;
     return products.filter((product) => {
-      const haystack = [
-        product.name,
-        product.category,
-        String(product.id),
-      ]
+      const haystack = [product.name, product.category, String(product.id)]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
       return haystack.includes(query);
     });
-  }, [searchQuery]);
+  }, [searchQuery, products]);
 
   const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
@@ -101,8 +128,11 @@ export default function ProductsPage() {
   }, [currentPage, totalPages]);
 
   const inStockCount = products.filter((product) => product.stock > 0).length;
-  const outOfStockCount = products.filter((product) => product.stock === 0).length;
-  const categoryCount = new Set(products.map((product) => product.category)).size;
+  const outOfStockCount = products.filter(
+    (product) => product.stock === 0,
+  ).length;
+  const categoryCount = new Set(products.map((product) => product.category))
+    .size;
 
   const stats = [
     {
@@ -227,7 +257,27 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pagedProducts.length === 0 && (
+                  {loading && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="px-6 py-8 text-center text-sm text-gray-500"
+                      >
+                        Đang tải danh sách sản phẩm...
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loading && error && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={6}
+                        className="px-6 py-8 text-center text-sm text-red-500"
+                      >
+                        {error}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  {!loading && !error && pagedProducts.length === 0 && (
                     <TableRow>
                       <TableCell
                         colSpan={6}
@@ -237,81 +287,83 @@ export default function ProductsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {pagedProducts.map((product) => {
-                    const inStock = product.stock > 0;
-                    return (
-                      <TableRow key={product.id} className="hover:bg-gray-50">
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-12 h-12 rounded-lg object-cover"
-                            />
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">
-                                {product.name}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                ID: #{product.id}
-                              </p>
+                  {!loading &&
+                    !error &&
+                    pagedProducts.map((product) => {
+                      const inStock = product.stock > 0;
+                      return (
+                        <TableRow key={product.id} className="hover:bg-gray-50">
+                          <TableCell className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={product.image}
+                                alt={product.name}
+                                className="w-12 h-12 rounded-lg object-cover"
+                              />
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">
+                                  {product.name}
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  ID: #{product.id}
+                                </p>
+                              </div>
                             </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <p className="text-sm text-gray-900">
-                            {product.category}
-                          </p>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {product.price}
-                          </p>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <p className="text-sm text-gray-900">
-                            {product.stock}
-                          </p>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <Badge
-                            className={
-                              inStock
-                                ? "bg-green-100 text-green-800 border-green-200"
-                                : "bg-red-100 text-red-800 border-red-200"
-                            }
-                          >
-                            {inStock ? "Còn hàng" : "Hết hàng"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 rounded-full text-gray-500 hover:text-[#c1272d] hover:bg-[#c1272d]/10"
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <p className="text-sm text-gray-900">
+                              {product.category}
+                            </p>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {product.price}
+                            </p>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <p className="text-sm text-gray-900">
+                              {product.stock}
+                            </p>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <Badge
+                              className={
+                                inStock
+                                  ? "bg-green-100 text-green-800 border-green-200"
+                                  : "bg-red-100 text-red-800 border-red-200"
+                              }
                             >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 rounded-full text-gray-500 hover:text-[#c1272d] hover:bg-[#c1272d]/10"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-9 w-9 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                              {inStock ? "Còn hàng" : "Hết hàng"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="px-6 py-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full text-gray-500 hover:text-[#c1272d] hover:bg-[#c1272d]/10"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full text-gray-500 hover:text-[#c1272d] hover:bg-[#c1272d]/10"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>
