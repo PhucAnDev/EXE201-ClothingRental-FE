@@ -39,6 +39,9 @@ function toOrderCode(id: number) {
 export default function OrderDetailPage() {
     const { id } = useParams();
     const bookingId = Number(id);
+    if (!Number.isFinite(bookingId)) {
+        return <AdminLayout><div className="p-6 text-red-600">ID đơn không hợp lệ</div></AdminLayout>;
+    }
     const nav = useNavigate();
 
     const [data, setData] = useState<BookingDto | null>(null);

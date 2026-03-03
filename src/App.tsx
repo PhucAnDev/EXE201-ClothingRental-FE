@@ -120,6 +120,14 @@ function AppContent() {
           }
         />
         <Route
+          path="/admin/orders/:id"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <OrderDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/analytics"
           element={
             <ProtectedRoute allowedRoles={[1, 2]}>

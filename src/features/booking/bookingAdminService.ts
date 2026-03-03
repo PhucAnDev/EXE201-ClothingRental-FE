@@ -24,7 +24,6 @@ export interface BookingDto {
     bookingId: number;
     userId: number;
 
-    // ✅ V2 fields
     userFullName?: string | null;
     userEmail?: string | null;
 
@@ -63,6 +62,49 @@ function toVnError(err: any): string {
     }
 }
 
+// ✅ helper ép number an toàn
+function toNumberOrNull(v: any): number | null {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
+// ✅ normalize + alias field để UI khỏi bị 0đ
+function normalizeBooking(x: any): BookingDto {
+    const totalRentalAmount = toNumberOrNull(
+        x?.totalRentalAmount ?? x?.totalRental ?? x?.rentalTotalAmount
+    );
+
+    const totalOrderAmount = toNumberOrNull(
+        x?.totalOrderAmount ?? x?.totalAmount ?? totalRentalAmount ?? 0
+    );
+
+    return {
+        bookingId: Number(x?.bookingId ?? x?.id ?? 0),
+        userId: Number(x?.userId ?? 0),
+
+        userFullName: x?.userFullName ?? null,
+        userEmail: x?.userEmail ?? null,
+        addressText: x?.addressText ?? null,
+
+        // ✅ cái cốt cần show
+        totalRentalAmount,
+        // ✅ alias để nếu UI đang dùng totalOrderAmount thì vẫn đúng
+        totalOrderAmount,
+
+        totalDepositAmount: toNumberOrNull(x?.totalDepositAmount),
+        totalSurcharge: toNumberOrNull(x?.totalSurcharge),
+        totalServiceAmount: toNumberOrNull(x?.totalServiceAmount),
+
+        status: x?.status ?? null,
+        paymentStatus: x?.paymentStatus ?? null,
+        bookingDate: x?.bookingDate ?? null,
+
+        details: Array.isArray(x?.details) ? x.details : [],
+        services: Array.isArray(x?.services) ? x.services : [],
+    };
+}
+
 export async function getAllBookingsAdmin(params?: {
     includeDetails?: boolean;
     includeServices?: boolean;
@@ -80,7 +122,8 @@ export async function getAllBookingsAdmin(params?: {
             }
         );
 
-        return (Array.isArray(res.data) ? res.data : []) as BookingDto[];
+        const arr = Array.isArray(res.data) ? res.data : [];
+        return arr.map(normalizeBooking);
     } catch (err: any) {
         throw new Error(toVnError(err));
     }
@@ -95,10 +138,14 @@ export async function getBookingAdminById(
 
     const token = localStorage.getItem("authToken") || "";
 
-    const res = await api.get(
-        `/api/Booking/get-by-id-v2/${bookingId}?includeDetails=${includeDetails}&includeServices=${includeServices}`,
-        { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-    );
+    try {
+        const res = await api.get(
+            `/api/Booking/get-by-id-v2/${bookingId}?includeDetails=${includeDetails}&includeServices=${includeServices}`,
+            { headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+        );
 
-    return res.data as BookingDto;
+        return normalizeBooking(res.data);
+    } catch (err: any) {
+        throw new Error(toVnError(err));
+    }
 }
