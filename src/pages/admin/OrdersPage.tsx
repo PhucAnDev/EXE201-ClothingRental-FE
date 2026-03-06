@@ -18,13 +18,27 @@ import {
   TableHeader,
   TableRow,
 } from "../../components/ui/table";
-import { Search, Eye, Download, Filter, Calendar, Package } from "lucide-react";
+import {
+  Search,
+  Eye,
+  Download,
+  Filter,
+  Calendar,
+  Package,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom"; // ✅ thêm
 import { getAllBookingsAdmin, type BookingDto } from "../../features/booking/bookingAdminService";
 
 type UiOrderStatus = "pending" | "active" | "completed" | "cancelled";
 type UiPaymentStatus = "paid" | "pending" | "refunded";
+type PageSizeOption = 10 | 20 | 50;
+
+const PAGE_SIZE_OPTIONS: PageSizeOption[] = [10, 20, 50];
 
 function toOrderCode(id: number) {
   return `DH${String(id).padStart(3, "0")}`;
@@ -67,8 +81,11 @@ function normalizePayment(s?: string | null): UiPaymentStatus {
 export default function OrdersPage() {
   const nav = useNavigate(); // ✅ thêm
 
+  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<PageSizeOption>(10);
 
   const [bookings, setBookings] = useState<BookingDto[]>([]);
   const [loading, setLoading] = useState(false);
@@ -124,6 +141,16 @@ export default function OrdersPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const debounceId = window.setTimeout(() => {
+      setSearchQuery(searchInput);
+    }, 300);
+
+    return () => {
+      window.clearTimeout(debounceId);
+    };
+  }, [searchInput]);
+
   const filteredBookings = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
 
@@ -149,6 +176,48 @@ export default function OrdersPage() {
     });
   }, [bookings, searchQuery, statusFilter]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalItems = filteredBookings.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
+  const pagedBookings = filteredBookings.slice(startIndex, endIndex);
+
+  const pageNumbers = useMemo(() => {
+    const maxPages = 5;
+    if (totalPages <= maxPages) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+
+    let start = Math.max(1, safePage - 2);
+    let end = Math.min(totalPages, safePage + 2);
+
+    if (start === 1) {
+      end = maxPages;
+    } else if (end === totalPages) {
+      start = totalPages - (maxPages - 1);
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  }, [safePage, totalPages]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    if (loading || error) return;
+    if (filteredBookings.length > 0 && pagedBookings.length === 0 && currentPage > 1) {
+      setCurrentPage((prev) => Math.max(1, prev - 1));
+    }
+  }, [currentPage, error, filteredBookings.length, loading, pagedBookings.length]);
+
   const stats = useMemo(() => {
     const total = bookings.length;
     const active = bookings.filter((b) => normalizeStatus(b.status) === "active").length;
@@ -162,6 +231,13 @@ export default function OrdersPage() {
       { label: "Hoàn thành", value: String(completed), icon: Package, color: "bg-purple-500" },
     ];
   }, [bookings]);
+
+  const handlePageSizeChange = (value: string) => {
+    const parsed = Number(value) as PageSizeOption;
+    if (!PAGE_SIZE_OPTIONS.includes(parsed)) return;
+    setPageSize(parsed);
+    setCurrentPage(1);
+  };
 
   return (
     <AdminLayout>
@@ -202,8 +278,8 @@ export default function OrdersPage() {
                 <Input
                   type="text"
                   placeholder="Tìm theo mã đơn, khách hàng, email, địa chỉ, tên sản phẩm..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10"
                 />
               </div>
@@ -275,7 +351,7 @@ export default function OrdersPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredBookings.map((b) => {
+                    pagedBookings.map((b) => {
                       const details = b.details ?? [];
                       const first = details[0];
 
@@ -341,6 +417,89 @@ export default function OrdersPage() {
                   )}
                 </TableBody>
               </Table>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-md">
+          <CardContent className="flex flex-col gap-4 p-4 xl:flex-row xl:items-center xl:justify-between">
+            <p className="text-sm text-gray-600">
+              Đang xem {totalItems ? startIndex + 1 : 0}-{endIndex} / Tổng {totalItems} đơn thuê
+            </p>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-500">Mỗi trang</span>
+              <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="h-9 w-[84px] border-gray-200 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1 border-gray-200 text-gray-700 hover:bg-[#fff4df]"
+                disabled={safePage <= 1 || loading}
+                onClick={() => setCurrentPage(1)}
+              >
+                <ChevronsLeft className="h-4 w-4" />
+                <span className="hidden md:inline">Đầu</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1 border-gray-200 text-gray-700 hover:bg-[#fff4df]"
+                disabled={safePage <= 1 || loading}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="hidden md:inline">Trước</span>
+              </Button>
+
+              {pageNumbers.map((page) => (
+                <Button
+                  key={page}
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => setCurrentPage(page)}
+                  className={
+                    page === safePage
+                      ? "h-9 min-w-[40px] rounded-md border-[#c1272d] bg-[#c1272d] text-white hover:bg-[#c1272d]"
+                      : "h-9 min-w-[40px] rounded-md border-gray-200 text-gray-700 hover:bg-[#fff4df]"
+                  }
+                >
+                  {page}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1 border-gray-200 text-gray-700 hover:bg-[#fff4df]"
+                disabled={safePage >= totalPages || loading}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              >
+                <span className="hidden md:inline">Sau</span>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1 border-gray-200 text-gray-700 hover:bg-[#fff4df]"
+                disabled={safePage >= totalPages || loading}
+                onClick={() => setCurrentPage(totalPages)}
+              >
+                <span className="hidden md:inline">Cuối</span>
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
             </div>
           </CardContent>
         </Card>

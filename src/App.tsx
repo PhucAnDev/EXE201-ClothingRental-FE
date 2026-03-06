@@ -26,6 +26,7 @@ import { PaymentSuccessPage } from "./pages/PaymentSuccessPage";
 import { PaymentFailedPage } from "./pages/PaymentFailedPage";
 import DashboardPage from "./pages/admin/DashboardPage";
 import ProductsPage from "./pages/admin/ProductsPage";
+import AdminProductDetailPage from "./pages/admin/ProductDetailPage";
 import UsersPage from "./pages/admin/UsersPage";
 import TermsPage from "./pages/admin/TermsPage";
 import SystemPage from "./pages/admin/SystemPage";
@@ -84,6 +85,14 @@ function AppContent() {
           element={
             <ProtectedRoute allowedRoles={[1, 2]}>
               <ProductsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/products/:outfitId"
+          element={
+            <ProtectedRoute allowedRoles={[1, 2]}>
+              <AdminProductDetailPage />
             </ProtectedRoute>
           }
         />
