@@ -63,6 +63,7 @@ export function AIStylistPage() {
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
     null,
   );
+  const [generateTrigger, setGenerateTrigger] = useState(0);
 
   /** Download video file to user's machine */
   const handleDownloadVideo = () => {
@@ -679,12 +680,16 @@ export function AIStylistPage() {
                         </p>
                       </div>
 
-                      <div className="w-full h-16 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] text-white shadow-xl rounded-lg text-base font-medium flex items-center gap-3 justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setGenerateTrigger((t) => t + 1)}
+                        className="w-full h-16 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-xl rounded-lg text-base font-medium flex items-center gap-3 justify-center transition-all duration-300 cursor-pointer"
+                      >
                         <Video className="w-5 h-5" />
                         TẠO VIDEO 360°
-                      </div>
+                      </button>
                       <p className="text-xs text-center text-[#6b6b6b] mt-2 italic">
-                        Nhấn nút Play ở khung bên phải để tạo video
+                        Video sẽ hiển thị ở khung bên phải
                       </p>
                     </div>
 
@@ -727,6 +732,7 @@ export function AIStylistPage() {
                         outfits.find((o) => o.id === selectedOutfit)?.name
                       }
                       onVideoGenerated={setGeneratedVideoUrl}
+                      triggerGenerate={generateTrigger}
                     />
 
                     {/* Decorative corner accents */}

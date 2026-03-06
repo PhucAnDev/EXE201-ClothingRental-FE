@@ -304,6 +304,8 @@ export function CollectionPage() {
   };
 
   const filteredCollections = collectionItems.filter((item) => {
+    if (!item.available) return false;
+
     const matchSearch = item.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());

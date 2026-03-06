@@ -19,6 +19,8 @@ interface VirtualTryOnVideoProps {
   selectedOutfit?: number;
   outfitName?: string;
   onVideoGenerated?: (videoUrl: string | null) => void;
+  /** Increment this value from outside to programmatically trigger generation. */
+  triggerGenerate?: number;
 }
 
 type GenerationState =
@@ -49,6 +51,7 @@ export function VirtualTryOnVideo({
   selectedOutfit = 0,
   outfitName,
   onVideoGenerated,
+  triggerGenerate,
 }: VirtualTryOnVideoProps) {
   const [state, setState] = useState<GenerationState>("initial");
   const [progress, setProgress] = useState(0);
@@ -98,6 +101,14 @@ export function VirtualTryOnVideo({
     onVideoGenerated?.(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [height, bust, waist, hip, gender, selectedOutfit]);
+
+  // Trigger generation when parent increments triggerGenerate
+  useEffect(() => {
+    if (triggerGenerate && triggerGenerate > 0) {
+      handleGenerateVideo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerGenerate]);
 
   // ── Generate handler ─────────────────────────────────────────────
 
