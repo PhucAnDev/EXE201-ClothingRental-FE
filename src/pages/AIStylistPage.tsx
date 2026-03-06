@@ -202,7 +202,7 @@ export function AIStylistPage() {
   const steps = [
     { number: 1, title: "Nhập Số Đo", icon: Ruler },
     { number: 2, title: "Chọn Trang Phục", icon: Sparkles },
-    { number: 3, title: "Tạo Video 360°", icon: Video },
+    { number: 3, title: "Tạo Ma-Nơ-Canh 3D °", icon: Video },
   ];
 
   return (
@@ -466,7 +466,7 @@ export function AIStylistPage() {
                             Công nghệ AI - Kết quả trong ~5 giây
                           </span>
                           <br />
-                          Tạo video 360° với trang phục đã chọn theo số đo cơ
+                          Tạo Ma-Nơ-Canh 3D với trang phục đã chọn theo số đo cơ
                           thể của bạn. Video sẽ hiển thị ở khung bên phải.
                         </span>
                       </p>
@@ -674,7 +674,7 @@ export function AIStylistPage() {
                               Công nghệ AI - Kết quả trong ~5 giây
                             </span>
                             <br />
-                            Tạo video 360° với trang phục đã chọn theo số đo cơ
+                            Tạo Ma-Nơ-Canh 3D với trang phục đã chọn theo số đo cơ
                             thể của bạn. Video sẽ hiển thị ở khung bên phải.
                           </span>
                         </p>
@@ -686,10 +686,10 @@ export function AIStylistPage() {
                         className="w-full h-16 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white shadow-xl rounded-lg text-base font-medium flex items-center gap-3 justify-center transition-all duration-300 cursor-pointer"
                       >
                         <Video className="w-5 h-5" />
-                        TẠO VIDEO 360°
+                        TẠO MA-NƠ-CANH 3D
                       </button>
                       <p className="text-xs text-center text-[#6b6b6b] mt-2 italic">
-                        Video sẽ hiển thị ở khung bên phải
+                        Ma-Nơ-Canh sẽ hiển thị ở khung bên phải
                       </p>
                     </div>
 
@@ -761,7 +761,7 @@ export function AIStylistPage() {
                             disabled={!generatedVideoUrl}
                             className="text-[#c1272d] hover:text-[#8b1e1f] font-medium underline underline-offset-2 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                           >
-                            tải video về
+                            tải về
                           </button>
                         </p>
                       </div>

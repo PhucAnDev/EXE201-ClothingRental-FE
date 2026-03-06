@@ -503,7 +503,7 @@ export function CheckoutPage() {
       const paymentUrl = paymentResponse?.url || paymentResponse?.Url;
 
       if (!paymentUrl) {
-        throw new Error("Không nhận được link thanh toán VNPay.");
+        throw new Error("Không nhận được link thanh toán Payos.");
       }
 
       setShowPaymentDialog(false);
@@ -512,7 +512,7 @@ export function CheckoutPage() {
       console.error("Failed to create payment URL:", error);
       const message =
         (error as any)?.response?.data?.message ||
-        "Không thể khởi tạo thanh toán VNPay. Vui lòng thử lại.";
+        "Không thể khởi tạo thanh toán Payos. Vui lòng thử lại.";
       alert(message);
     } finally {
       setIsRedirectingToPayment(false);
@@ -1457,7 +1457,7 @@ export function CheckoutPage() {
               className="w-full bg-red-600 hover:bg-red-700 text-white"
               disabled={isRedirectingToPayment}
             >
-              {isRedirectingToPayment ? "Đang chuyển đến VNPay..." : "Thanh Toán"}
+              {isRedirectingToPayment ? "Đang chuyển đến Payos..." : "Thanh Toán"}
             </Button>
           </div>
         </DialogContent>

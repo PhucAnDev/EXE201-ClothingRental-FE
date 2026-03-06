@@ -292,7 +292,7 @@ export function VirtualTryOnVideo({
               Thử Đồ Ảo AI
             </h3>
             <p className="text-sm text-gray-600 max-w-xs mx-auto">
-              Tạo video 360° với trang phục đã chọn
+              Tạo Ma-Nơ-Canh 3D với trang phục đã chọn
               <br />
               theo số đo cơ thể của bạn
             </p>
@@ -337,7 +337,7 @@ export function VirtualTryOnVideo({
             disabled={!selectedOutfit || selectedOutfit <= 0}
             className="px-8 py-3 bg-gradient-to-r from-[#c1272d] to-[#8b1e1f] hover:from-[#8b1e1f] hover:to-[#c1272d] text-white font-medium rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 uppercase tracking-wide text-sm disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Tạo Video 360°
+            Tạo Ma-Nơ-Canh 3D
           </button>
 
           <p className="text-xs text-gray-500 italic">
