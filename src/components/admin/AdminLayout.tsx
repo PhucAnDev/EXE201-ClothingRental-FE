@@ -90,14 +90,6 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         {/* Page Content */}
         <main className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-8">{children}</div>
-
-          {/* Footer */}
-          <footer className="bg-white border-t border-gray-200 px-8 py-4">
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <p>© 2024 Sắc Việt. All rights reserved.</p>
-              <p>Version 1.0.0</p>
-            </div>
-          </footer>
         </main>
       </div>
     </div>

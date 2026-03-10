@@ -70,6 +70,8 @@ const slice = createSlice({
       state.token = null;
       localStorage.removeItem("currentUser");
       localStorage.removeItem("authToken");
+      localStorage.removeItem("chatHistory");
+      localStorage.removeItem("chatHistory_messages");
     },
   },
   extraReducers: (builder) => {
@@ -84,6 +86,8 @@ const slice = createSlice({
       try {
         localStorage.setItem("currentUser", JSON.stringify(a.payload.user));
         localStorage.setItem("authToken", a.payload.token);
+        localStorage.removeItem("chatHistory"); // xóa lịch sử chat khi đăng nhập tài khoản mới
+        localStorage.removeItem("chatHistory_messages");
       } catch (e) {
         // ignore
       }

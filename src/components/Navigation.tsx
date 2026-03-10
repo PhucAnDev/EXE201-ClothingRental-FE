@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import logoImage from "figma:asset/36410bb4c7f9be9d338f77ff699328fde2f67245.png";
 import { LoginDialog } from "./LoginDialog";
 import { RegisterDialog } from "./RegisterDialog";
-import { Heart, User, Package, LogOut } from "lucide-react";
+import { Heart, User, Package, LogOut, LayoutDashboard } from "lucide-react";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -231,7 +231,7 @@ export function Navigation() {
         ) : (
           <div className="flex items-center gap-4">
             {/* Wishlist and Notifications - Only show for customers */}
-            {user.role !== "admin" && (
+            {user.roleId !== 1 && user.roleId !== 2 && (
               <>
                 {/* Wishlist/Favorites Icon */}
                 <button 
@@ -319,22 +319,14 @@ export function Navigation() {
                 
                 {/* Menu Items */}
                 <div className="p-2">
-                  {user.role === "admin" ? (
-                    <>
-                      <DropdownMenuItem 
-                        onClick={() => navigate("/admin/dashboard")}
-                        className="px-4 py-3 cursor-pointer rounded-lg hover:bg-gradient-to-r hover:from-[#c1272d]/10 hover:to-[#d4af37]/10 transition-all"
-                      >
-                        <User className="mr-3 h-5 w-5 text-[#c1272d]" />
-                        <span className="font-medium">Admin Dashboard</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => navigate("/")}
-                        className="px-4 py-3 cursor-pointer rounded-lg hover:bg-gradient-to-r hover:from-[#c1272d]/10 hover:to-[#d4af37]/10 transition-all"
-                      >
-                        <span className="font-medium">Về trang chủ</span>
-                      </DropdownMenuItem>
-                    </>
+                  {user.roleId === 1 || user.roleId === 2 ? (
+                    <DropdownMenuItem 
+                      onClick={() => navigate("/admin/dashboard")}
+                      className="px-4 py-3 cursor-pointer rounded-lg hover:bg-gradient-to-r hover:from-[#c1272d]/10 hover:to-[#d4af37]/10 transition-all group"
+                    >
+                      <LayoutDashboard className="mr-3 h-5 w-5 text-[#c1272d]" />
+                      <span className="font-medium text-gray-700 group-hover:text-[#c1272d] transition-colors">Dashboard</span>
+                    </DropdownMenuItem>
                   ) : (
                     <>
                       <DropdownMenuItem 

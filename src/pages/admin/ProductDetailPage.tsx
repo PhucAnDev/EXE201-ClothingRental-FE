@@ -1516,30 +1516,51 @@ export default function ProductDetailPage() {
   return (
     <AdminLayout>
       <div className="space-y-6">
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            <Link to="/admin/products" className="hover:text-foreground">
-              Quản lý sản phẩm
-            </Link>{" "}
-            / {detail.name || "Sản phẩm"}
-          </p>
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-sm">
+          <Link to="/admin/products" className="text-[#c1272d] hover:text-[#a01f24] font-medium transition-colors">
+            Quản lý sản phẩm
+          </Link>
+          <span className="text-gray-400">/</span>
+          <span className="text-gray-600">{detail.name || "Sản phẩm"}</span>
+        </div>
 
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-semibold tracking-tight">{detail.name || "Chi tiết sản phẩm"}</h1>
+        {/* Header */}
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#1a1a1a] via-[#2a1a1a] to-[#1a1a1a] p-6 shadow-xl">
+          <div className="absolute inset-0 bg-gradient-to-r from-[#c1272d]/20 via-transparent to-[#d4af37]/10 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-bl from-[#d4af37]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-3">
+              <h1 className="text-3xl font-bold tracking-tight text-white">{detail.name || "Chi tiết sản phẩm"}</h1>
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="outline">{mapStatusLabel(detail.status || "")}</Badge>
-                {detail.isLimited && <Badge className="bg-amber-100 text-amber-800">Bản giới hạn</Badge>}
-                <Badge variant="secondary">{categoryLabel}</Badge>
+                <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
+                  (detail.status || "").toLowerCase().includes("active") || (detail.status || "").toLowerCase().includes("available")
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                    : "bg-red-500/20 text-red-300 border border-red-500/30"
+                }`}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-current" />
+                  {mapStatusLabel(detail.status || "")}
+                </span>
+                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 border border-white/20">
+                  {categoryLabel}
+                </span>
+                {detail.isLimited && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#d4af37]/20 px-3 py-1 text-xs font-semibold text-[#d4af37] border border-[#d4af37]/30">
+                    ✦ Bản giới hạn
+                  </span>
+                )}
               </div>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setEditOutfitOpen(true)}>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setEditOutfitOpen(true)}
+                className="border-white/20 bg-white/10 text-white hover:bg-white/20 hover:border-white/30 backdrop-blur-sm"
+              >
                 <Pencil className="mr-2 h-4 w-4" />
-                Chỉnh sửa thông tin sản phẩm
+                Chỉnh sửa
               </Button>
-              <Button asChild>
+              <Button asChild className="bg-[#c1272d] hover:bg-[#a01f24] text-white shadow-lg shadow-[#c1272d]/30">
                 <Link to="/admin/products">
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Quay lại danh sách
@@ -1549,58 +1570,65 @@ export default function ProductDetailPage() {
           </div>
         </div>
 
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Giá thuê</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{formatVnd(toNum(detail.baseRentalPrice, 0))}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Tổng tồn kho</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-semibold">{totalStock.toLocaleString("vi-VN")}</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Đánh giá</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-2">
-              <Star className="h-5 w-5 text-amber-500" />
-              <p className="text-2xl font-semibold">{avgRating > 0 ? avgRating.toFixed(1) : "0.0"}</p>
-              <p className="text-sm text-muted-foreground">({reviewCount} lượt)</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#c1272d] to-[#8b0000] p-5 shadow-lg shadow-[#c1272d]/20">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8 blur-xl" />
+            <p className="text-sm font-medium text-red-100/80 mb-1">Giá thuê</p>
+            <p className="text-2xl font-bold text-white">{formatVnd(toNum(detail.baseRentalPrice, 0))}</p>
+            <div className="mt-3 flex items-center gap-1 text-red-100/60 text-xs">
+              <span>Giá thuê cơ bản / ngày</span>
+            </div>
+          </div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a6b3a] to-[#0d4a27] p-5 shadow-lg shadow-emerald-900/30">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8 blur-xl" />
+            <p className="text-sm font-medium text-emerald-100/80 mb-1">Tổng tồn kho</p>
+            <p className="text-2xl font-bold text-white">{totalStock.toLocaleString("vi-VN")}</p>
+            <div className="mt-3 flex items-center gap-1 text-emerald-100/60 text-xs">
+              <span>Sản phẩm có sẵn</span>
+            </div>
+          </div>
+          <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#b8791a] to-[#7a4e0d] p-5 shadow-lg shadow-amber-900/30">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-8 translate-x-8 blur-xl" />
+            <p className="text-sm font-medium text-amber-100/80 mb-1">Đánh giá</p>
+            <div className="flex items-center gap-2">
+              <Star className="h-5 w-5 text-[#d4af37] fill-[#d4af37]" />
+              <p className="text-2xl font-bold text-white">{avgRating > 0 ? avgRating.toFixed(1) : "0.0"}</p>
+              <p className="text-sm text-amber-100/60">/ 5</p>
+            </div>
+            <div className="mt-2 text-amber-100/60 text-xs">{reviewCount} lượt đánh giá</div>
+          </div>
         </div>
 
+        {/* Image Gallery + Quick Info */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Thư viện ảnh</CardTitle>
+          <Card className="overflow-hidden border-0 shadow-md">
+            <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5">
+              <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                <span className="w-1 h-5 rounded-full bg-[#c1272d] inline-block" />
+                Thư viện ảnh
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="overflow-hidden rounded-lg border bg-muted/20">
+            <CardContent className="space-y-4 p-5">
+              <div className="overflow-hidden rounded-xl border-2 border-gray-100 bg-gray-50 shadow-inner">
                 <img
                   src={primaryImage?.imageUrl || IMAGE_PLACEHOLDER}
                   alt={detail.name || "Ảnh sản phẩm"}
-                  className="h-[320px] w-full object-cover"
+                  className="h-[340px] w-full object-cover"
                 />
               </div>
-
               {sortedImages.length > 0 ? (
-                <div className="grid grid-cols-4 gap-3">
+                <div className="grid grid-cols-4 gap-2">
                   {sortedImages.map((image, index) => (
                     <button
                       key={image.imageId || `${image.imageUrl}-${index}`}
                       type="button"
                       onClick={() => setSelectedImage(index)}
-                      className={`overflow-hidden rounded border ${selectedImage === index ? "border-primary ring-1 ring-primary" : "border-muted"
-                        }`}
+                      className={`overflow-hidden rounded-lg border-2 transition-all ${
+                        selectedImage === index
+                          ? "border-[#c1272d] ring-2 ring-[#c1272d]/30 scale-95"
+                          : "border-gray-200 hover:border-[#c1272d]/50"
+                      }`}
                     >
                       <img
                         src={image.imageUrl || IMAGE_PLACEHOLDER}
@@ -1611,149 +1639,143 @@ export default function ProductDetailPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground">Chưa có ảnh sản phẩm.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Chưa có ảnh sản phẩm.</p>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Thông tin nhanh</CardTitle>
+          <Card className="overflow-hidden border-0 shadow-md">
+            <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5">
+              <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                <span className="w-1 h-5 rounded-full bg-[#d4af37] inline-block" />
+                Thông tin nhanh
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Danh mục</span>
-                <span className="font-medium">{categoryLabel}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Chất liệu</span>
-                <span className="font-medium">{detail.type || "Không rõ"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Giới tính</span>
-                <span className="font-medium">{mapGenderLabel(detail.gender || "")}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Khu vực</span>
-                <span className="font-medium">{detail.region || "Không rõ"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Trạng thái</span>
-                <span className="font-medium">{mapStatusLabel(detail.status || "")}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Giới hạn</span>
-                <span className="font-medium">{detail.isLimited ? "Có" : "Không"}</span>
-              </div>
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-muted-foreground">Ngày tạo</span>
-                <span className="font-medium">{formatDateOnly(detail.createdAt)}</span>
-              </div>
-              <div className="pt-2">
-                <p className="mb-1 text-muted-foreground">Tồn kho theo kích cỡ</p>
-                <p className="font-medium">{stockSummary}</p>
+            <CardContent className="p-0">
+              {[
+                { label: "Danh mục", value: categoryLabel },
+                { label: "Chất liệu", value: detail.type || "Không rõ" },
+                { label: "Giới tính", value: mapGenderLabel(detail.gender || "") },
+                { label: "Khu vực", value: detail.region || "Không rõ" },
+                { label: "Trạng thái", value: mapStatusLabel(detail.status || "") },
+                { label: "Giới hạn", value: detail.isLimited ? "Có" : "Không" },
+                { label: "Ngày tạo", value: formatDateOnly(detail.createdAt) },
+              ].map((item, i) => (
+                <div key={item.label} className={`flex items-center justify-between px-5 py-3 text-sm ${i % 2 === 0 ? "bg-white" : "bg-gray-50/60"}`}>
+                  <span className="text-gray-500">{item.label}</span>
+                  <span className="font-semibold text-gray-800 text-right">{item.value}</span>
+                </div>
+              ))}
+              <div className="bg-gradient-to-r from-[#c1272d]/5 to-[#d4af37]/5 px-5 py-3 border-t">
+                <p className="text-xs text-gray-500 mb-1.5 font-medium uppercase tracking-wide">Tồn kho theo kích cỡ</p>
+                <p className="font-semibold text-gray-800 text-sm">{stockSummary || "—"}</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Tabs */}
         <Tabs value={tab} onValueChange={(value: string) => setTab(value as TabValue)} className="space-y-4">
-          <TabsList className="flex h-auto w-full flex-wrap gap-2 bg-transparent p-0">
-            <TabsTrigger value="overview">Tổng quan</TabsTrigger>
-            <TabsTrigger value="images">Ảnh sản phẩm</TabsTrigger>
-            <TabsTrigger value="sizes">Kho &amp; Kích cỡ</TabsTrigger>
-            <TabsTrigger value="attributes">Thuộc tính</TabsTrigger>
-            <TabsTrigger value="reviews">Đánh giá</TabsTrigger>
+          <TabsList className="flex h-12 w-full flex-wrap gap-1 bg-gray-100 p-1 rounded-xl border border-gray-200">
+            {(["overview", "images", "sizes", "attributes", "reviews"] as const).map((t) => {
+              const labels: Record<string, string> = {
+                overview: "Tổng quan",
+                images: "Ảnh sản phẩm",
+                sizes: "Kho & Kích cỡ",
+                attributes: "Thuộc tính",
+                reviews: "Đánh giá",
+              };
+              return (
+                <TabsTrigger
+                  key={t}
+                  value={t}
+                  className="rounded-lg px-4 py-1.5 text-sm font-medium data-[state=active]:bg-[#c1272d] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
+                >
+                  {labels[t]}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tổng quan sản phẩm</CardTitle>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5">
+                <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-[#c1272d] inline-block" />
+                  Tổng quan sản phẩm
+                </CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Tên sản phẩm</p>
-                  <p className="font-medium">{detail.name || "--"}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Giá thuê</p>
-                  <p className="font-medium">{formatVnd(toNum(detail.baseRentalPrice, 0))}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Trạng thái</p>
-                  <p className="font-medium">{mapStatusLabel(detail.status || "")}</p>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Tồn kho theo kích cỡ</p>
-                  <p className="font-medium">{stockSummary}</p>
-                </div>
+              <CardContent className="grid gap-0 md:grid-cols-2 p-0">
+                {[
+                  { label: "Tên sản phẩm", value: detail.name || "--" },
+                  { label: "Giá thuê", value: formatVnd(toNum(detail.baseRentalPrice, 0)) },
+                  { label: "Trạng thái", value: mapStatusLabel(detail.status || "") },
+                  { label: "Tồn kho theo kích cỡ", value: stockSummary },
+                ].map((item, i) => (
+                  <div key={item.label} className={`px-5 py-4 border-b border-gray-100 ${i % 2 === 1 ? "md:border-l" : ""}`}>
+                    <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide font-medium">{item.label}</p>
+                    <p className="font-semibold text-gray-800">{item.value}</p>
+                  </div>
+                ))}
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Thuộc tính sản phẩm</CardTitle>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5 flex flex-row items-center justify-between">
+                <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-[#d4af37] inline-block" />
+                  Thuộc tính sản phẩm
+                </CardTitle>
                 {!attributes && (
-                  <Button size="sm" onClick={() => setTab("attributes")}>
+                  <Button size="sm" onClick={() => setTab("attributes")} className="bg-[#c1272d] hover:bg-[#a01f24] text-white text-xs">
                     Tạo thuộc tính
                   </Button>
                 )}
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 {attributes ? (
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Chất liệu</p>
-                      <p className="font-medium">{attributes.material || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phom dáng</p>
-                      <p className="font-medium">{attributes.silhouette || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mức độ trang trọng</p>
-                      <p className="font-medium">{attributes.formalityLevel || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Dịp sử dụng</p>
-                      <p className="font-medium">{attributes.occasion || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Màu chủ đạo</p>
-                      <p className="font-medium">{attributes.colorPrimary || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Mùa phù hợp</p>
-                      <p className="font-medium">{attributes.seasonSuitability || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Tiêu đề câu chuyện</p>
-                      <p className="font-medium">{attributes.storyTitle || "--"}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Nguồn gốc văn hóa</p>
-                      <p className="font-medium">{attributes.culturalOrigin || "--"}</p>
-                    </div>
-                    <div className="md:col-span-2">
-                      <p className="text-sm text-muted-foreground">Nội dung câu chuyện</p>
-                      <p className="font-medium whitespace-pre-wrap">{attributes.storyContent || "--"}</p>
+                    {[
+                      { label: "Chất liệu", value: attributes.material },
+                      { label: "Phom dáng", value: attributes.silhouette },
+                      { label: "Mức độ trang trọng", value: attributes.formalityLevel },
+                      { label: "Dịp sử dụng", value: attributes.occasion },
+                      { label: "Màu chủ đạo", value: attributes.colorPrimary },
+                      { label: "Mùa phù hợp", value: attributes.seasonSuitability },
+                      { label: "Tiêu đề câu chuyện", value: attributes.storyTitle },
+                      { label: "Nguồn gốc văn hóa", value: attributes.culturalOrigin },
+                    ].map((item) => (
+                      <div key={item.label} className="rounded-lg bg-gray-50 px-4 py-3">
+                        <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide font-medium">{item.label}</p>
+                        <p className="font-semibold text-gray-800 text-sm">{item.value || "--"}</p>
+                      </div>
+                    ))}
+                    <div className="md:col-span-2 rounded-lg bg-gray-50 px-4 py-3">
+                      <p className="text-xs text-gray-400 mb-1 uppercase tracking-wide font-medium">Nội dung câu chuyện</p>
+                      <p className="font-medium text-gray-800 text-sm whitespace-pre-wrap">{attributes.storyContent || "--"}</p>
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Chưa có thuộc tính cho sản phẩm này. Vui lòng tạo ở tab Thuộc tính.
-                  </p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                      <Plus className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">Chưa có thuộc tính cho sản phẩm này.</p>
+                    <p className="text-xs text-gray-400 mt-1">Vui lòng tạo ở tab Thuộc tính.</p>
+                  </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
 
           <TabsContent value="images" className="space-y-4">
-            <Card>
-              <CardHeader className="space-y-3">
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5 space-y-3">
                 <div className="flex flex-row items-center justify-between">
-                  <CardTitle>Ảnh sản phẩm</CardTitle>
-                  <Button onClick={openAddImage}>
+                  <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                    <span className="w-1 h-5 rounded-full bg-[#c1272d] inline-block" />
+                    Ảnh sản phẩm
+                  </CardTitle>
+                  <Button onClick={openAddImage} className="bg-[#c1272d] hover:bg-[#a01f24] text-white text-sm">
                     <ImagePlus className="mr-2 h-4 w-4" />
                     Thêm ảnh
                   </Button>
@@ -1764,6 +1786,7 @@ export default function ProductDetailPage() {
                     variant="outline"
                     onClick={cancelImageOrderChanges}
                     disabled={!imagesOrderDirty || imagesOrderSaving}
+                    className="text-sm border-gray-300 hover:border-[#c1272d] hover:text-[#c1272d]"
                   >
                     Hủy thay đổi
                   </Button>
@@ -1771,6 +1794,7 @@ export default function ProductDetailPage() {
                     type="button"
                     onClick={saveImageOrder}
                     disabled={!imagesOrderDirty || imagesOrderSaving}
+                    className="bg-[#d4af37] hover:bg-[#b8941f] text-white text-sm"
                   >
                     {imagesOrderSaving ? (
                       <>
@@ -1783,18 +1807,23 @@ export default function ProductDetailPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 {imagesByOrder.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Chưa có ảnh sản phẩm.</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                      <ImagePlus className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">Chưa có ảnh sản phẩm.</p>
+                  </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[120px]">Sắp xếp</TableHead>
-                        <TableHead>Ảnh</TableHead>
-                        <TableHead>Loại ảnh</TableHead>
-                        <TableHead>Thứ tự</TableHead>
-                        <TableHead className="text-right">Hành động</TableHead>
+                      <TableRow className="bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-gray-500">Sắp xếp</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ảnh</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Loại ảnh</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Thứ tự</TableHead>
+                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1806,26 +1835,26 @@ export default function ProductDetailPage() {
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7 border-gray-200 hover:border-[#c1272d] hover:text-[#c1272d]"
                                 onClick={() => reorderImageAtIndex(index, index - 1)}
                                 disabled={index === 0 || imagesOrderSaving}
                               >
-                                <ArrowUp className="h-4 w-4" />
+                                <ArrowUp className="h-3.5 w-3.5" />
                               </Button>
                               <Button
                                 type="button"
                                 variant="outline"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7 border-gray-200 hover:border-[#c1272d] hover:text-[#c1272d]"
                                 onClick={() => reorderImageAtIndex(index, index + 1)}
                                 disabled={index === imagesByOrder.length - 1 || imagesOrderSaving}
                               >
-                                <ArrowDown className="h-4 w-4" />
+                                <ArrowDown className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <div className="h-14 w-20 overflow-hidden rounded border">
+                            <div className="h-14 w-20 overflow-hidden rounded-lg border-2 border-gray-100 shadow-sm">
                               <img
                                 src={image.imageUrl || IMAGE_PLACEHOLDER}
                                 alt="Ảnh sản phẩm"
@@ -1833,22 +1862,26 @@ export default function ProductDetailPage() {
                               />
                             </div>
                           </TableCell>
-                          <TableCell>{mapImageTypeLabel(image.imageType || "")}</TableCell>
-                          <TableCell>{index + 1}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100">
+                              {mapImageTypeLabel(image.imageType || "")}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium text-gray-700">{index + 1}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openEditImage(image)}>
-                                <Pencil className="mr-2 h-4 w-4" />
+                              <Button variant="outline" size="sm" onClick={() => openEditImage(image)} className="text-xs border-gray-200 hover:border-[#c1272d] hover:text-[#c1272d]">
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
                                 Chỉnh sửa
                               </Button>
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                                className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
                                 onClick={() => handleRequestDeleteImage(image)}
                                 disabled={deletingImage}
                               >
-                                <Trash2 className="mr-2 h-4 w-4" />
+                                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                                 Xóa
                               </Button>
                             </div>
@@ -1863,51 +1896,65 @@ export default function ProductDetailPage() {
           </TabsContent>
 
           <TabsContent value="sizes" className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Kho &amp; Kích cỡ</CardTitle>
-                <Button onClick={openAddSize}>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5 flex flex-row items-center justify-between">
+                <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-[#c1272d] inline-block" />
+                  Kho &amp; Kích cỡ
+                </CardTitle>
+                <Button onClick={openAddSize} className="bg-[#c1272d] hover:bg-[#a01f24] text-white text-sm">
                   <Plus className="mr-2 h-4 w-4" />
                   Thêm kích cỡ
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-5">
                 {sizes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Chưa có dữ liệu kích cỡ.</p>
+                  <div className="flex flex-col items-center justify-center py-10 text-center">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                      <Plus className="w-5 h-5 text-gray-400" />
+                    </div>
+                    <p className="text-sm text-gray-500">Chưa có dữ liệu kích cỡ.</p>
+                  </div>
                 ) : (
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead>Kích cỡ</TableHead>
-                        <TableHead>Tồn kho</TableHead>
-                        <TableHead>Ngực tối đa (cm)</TableHead>
-                        <TableHead>Eo tối đa (cm)</TableHead>
-                        <TableHead>Mông tối đa (cm)</TableHead>
-                        <TableHead>Trạng thái</TableHead>
-                        <TableHead className="text-right">Hành động</TableHead>
+                      <TableRow className="bg-gray-50 hover:bg-gray-50">
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Kích cỡ</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tồn kho</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Ngực (cm)</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Eo (cm)</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mông (cm)</TableHead>
+                        <TableHead className="text-xs font-semibold uppercase tracking-wide text-gray-500">Trạng thái</TableHead>
+                        <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Hành động</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {sizes.map((size) => {
                         const stock = Math.max(0, toNum(size.stockQuantity, 0));
                         return (
-                          <TableRow key={size.sizeId}>
-                            <TableCell className="font-medium">{size.sizeLabel || "--"}</TableCell>
-                            <TableCell>{stock}</TableCell>
-                            <TableCell>{formatMeasurement(size.chestMaxCm)}</TableCell>
-                            <TableCell>{formatMeasurement(size.waistMaxCm)}</TableCell>
-                            <TableCell>{formatMeasurement(size.hipMaxCm)}</TableCell>
+                          <TableRow key={size.sizeId} className="hover:bg-gray-50/80">
+                            <TableCell className="font-semibold text-gray-800">{size.sizeLabel || "--"}</TableCell>
                             <TableCell>
-                              <div className="flex flex-wrap items-center gap-2">
-                                {stockBadge(stock)}
-                                <Badge variant="outline" className="text-xs">
+                              <span className={`font-semibold ${stock > 0 ? "text-emerald-700" : "text-red-600"}`}>{stock}</span>
+                            </TableCell>
+                            <TableCell className="text-gray-600">{formatMeasurement(size.chestMaxCm)}</TableCell>
+                            <TableCell className="text-gray-600">{formatMeasurement(size.waistMaxCm)}</TableCell>
+                            <TableCell className="text-gray-600">{formatMeasurement(size.hipMaxCm)}</TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                                  stock > 0 ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-red-50 text-red-700 border-red-100"
+                                }`}>
+                                  {stock > 0 ? "Còn hàng" : "Hết hàng"}
+                                </span>
+                                <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-gray-50 text-gray-600 border border-gray-100">
                                   {toSizeStatusLabel(size.status || "")}
-                                </Badge>
+                                </span>
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="outline" size="sm" onClick={() => openEditSize(size)}>
-                                <Pencil className="mr-2 h-4 w-4" />
+                              <Button variant="outline" size="sm" onClick={() => openEditSize(size)} className="text-xs border-gray-200 hover:border-[#c1272d] hover:text-[#c1272d]">
+                                <Pencil className="mr-1.5 h-3.5 w-3.5" />
                                 Chỉnh sửa
                               </Button>
                             </TableCell>
@@ -1922,95 +1969,106 @@ export default function ProductDetailPage() {
           </TabsContent>
 
           <TabsContent value="attributes" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Thuộc tính sản phẩm</CardTitle>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5">
+                <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-[#d4af37] inline-block" />
+                  Thuộc tính sản phẩm
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <form className="space-y-4" onSubmit={saveAttributes}>
+              <CardContent className="p-5">
+                <form className="space-y-5" onSubmit={saveAttributes}>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-material">Chất liệu</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-material" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Chất liệu</Label>
                       <Input
                         id="attr-material"
                         value={attrsForm.material}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, material: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-silhouette">Phom dáng</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-silhouette" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Phom dáng</Label>
                       <Input
                         id="attr-silhouette"
                         value={attrsForm.silhouette}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, silhouette: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-formality">Mức độ trang trọng</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-formality" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mức độ trang trọng</Label>
                       <Input
                         id="attr-formality"
                         value={attrsForm.formalityLevel}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, formalityLevel: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-occasion">Dịp sử dụng</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-occasion" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dịp sử dụng</Label>
                       <Input
                         id="attr-occasion"
                         value={attrsForm.occasion}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, occasion: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-color">Màu chủ đạo</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-color" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Màu chủ đạo</Label>
                       <Input
                         id="attr-color"
                         value={attrsForm.colorPrimary}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, colorPrimary: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-season">Mùa phù hợp</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-season" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mùa phù hợp</Label>
                       <Input
                         id="attr-season"
                         value={attrsForm.seasonSuitability}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, seasonSuitability: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-story-title">Tiêu đề câu chuyện</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-story-title" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Tiêu đề câu chuyện</Label>
                       <Input
                         id="attr-story-title"
                         value={attrsForm.storyTitle}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, storyTitle: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="attr-origin">Nguồn gốc văn hóa</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="attr-origin" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Nguồn gốc văn hóa</Label>
                       <Input
                         id="attr-origin"
                         value={attrsForm.culturalOrigin}
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, culturalOrigin: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="attr-story-content">Nội dung câu chuyện</Label>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <Label htmlFor="attr-story-content" className="text-xs font-semibold uppercase tracking-wide text-gray-500">Nội dung câu chuyện</Label>
                       <Textarea
                         id="attr-story-content"
                         rows={4}
@@ -2018,11 +2076,12 @@ export default function ProductDetailPage() {
                         onChange={(event) =>
                           setAttrsForm((prev) => ({ ...prev, storyContent: event.target.value }))
                         }
+                        className="border-gray-200 focus:border-[#c1272d] focus:ring-[#c1272d]/20"
                       />
                     </div>
                   </div>
 
-                  <Button type="submit" disabled={attrsSaving}>
+                  <Button type="submit" disabled={attrsSaving} className="bg-[#c1272d] hover:bg-[#a01f24] text-white">
                     {attrsSaving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2040,65 +2099,73 @@ export default function ProductDetailPage() {
           </TabsContent>
 
           <TabsContent value="reviews" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Tổng quan đánh giá</CardTitle>
+            <Card className="border-0 shadow-md overflow-hidden">
+              <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5">
+                <CardTitle className="text-base font-semibold text-gray-700 flex items-center gap-2">
+                  <span className="w-1 h-5 rounded-full bg-[#d4af37] inline-block" />
+                  Tổng quan đánh giá
+                </CardTitle>
               </CardHeader>
-              <CardContent className="flex flex-wrap items-center gap-6">
-                <div>
-                  <p className="text-sm text-muted-foreground">Điểm trung bình</p>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-amber-500" />
-                    <span className="text-2xl font-semibold">
+              <CardContent className="flex flex-wrap items-center gap-8 p-5">
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Star className="h-6 w-6 text-[#d4af37] fill-[#d4af37]" />
+                    <span className="text-3xl font-bold text-gray-800">
                       {reviewsAvg > 0 ? reviewsAvg.toFixed(1) : "0.0"}
                     </span>
+                    <span className="text-gray-400 text-sm">/ 5</span>
                   </div>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">Điểm trung bình</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Số lượt đánh giá</p>
-                  <p className="text-2xl font-semibold">{reviews.length}</p>
+                <div className="w-px h-12 bg-gray-200 hidden sm:block" />
+                <div className="flex flex-col items-center">
+                  <span className="text-3xl font-bold text-gray-800">{reviews.length}</span>
+                  <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mt-1">Tổng đánh giá</p>
                 </div>
               </CardContent>
             </Card>
 
             {reviews.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-sm text-muted-foreground">
-                  Chưa có đánh giá nào cho sản phẩm này.
+              <Card className="border-0 shadow-md">
+                <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+                  <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                    <Star className="w-5 h-5 text-gray-400" />
+                  </div>
+                  <p className="text-sm text-gray-500">Chưa có đánh giá nào cho sản phẩm này.</p>
                 </CardContent>
               </Card>
             ) : (
               reviews.map((review) => (
-                <Card key={review.reviewId}>
-                  <CardHeader className="space-y-2">
+                <Card key={review.reviewId} className="border-0 shadow-md overflow-hidden">
+                  <CardHeader className="border-b bg-gray-50/50 pb-3 pt-4 px-5 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <p className="font-medium">{review.userFullName || "Ẩn danh"}</p>
-                        <p className="text-sm text-muted-foreground">{review.userEmail || "--"}</p>
+                        <p className="font-semibold text-gray-800">{review.userFullName || "Ẩn danh"}</p>
+                        <p className="text-xs text-gray-400">{review.userEmail || "--"}</p>
                       </div>
-                      <div className="text-right text-sm">
-                        <p className="font-medium">{Math.max(0, toNum(review.rating, 0)).toFixed(1)} / 5</p>
-                        <p className="text-muted-foreground">{formatDateTime(review.createdAt)}</p>
+                      <div className="text-right">
+                        <p className="font-bold text-[#c1272d]">{Math.max(0, toNum(review.rating, 0)).toFixed(1)} <span className="text-gray-400 font-normal text-xs">/ 5</span></p>
+                        <p className="text-xs text-gray-400">{formatDateTime(review.createdAt)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       {Array.from({ length: 5 }).map((_, index) => (
                         <Star
                           key={`${review.reviewId}-${index}`}
                           className={`h-4 w-4 ${index < Math.round(Math.max(0, toNum(review.rating, 0)))
-                            ? "fill-amber-500 text-amber-500"
-                            : "text-slate-300"
+                            ? "fill-[#d4af37] text-[#d4af37]"
+                            : "text-gray-200 fill-gray-200"
                             }`}
                         />
                       ))}
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <p className="whitespace-pre-wrap text-sm">{review.comment || "Không có nhận xét."}</p>
+                  <CardContent className="space-y-3 p-5">
+                    <p className="whitespace-pre-wrap text-sm text-gray-700">{review.comment || "Không có nhận xét."}</p>
                     {Array.isArray(review.images) && review.images.length > 0 && (
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         {review.images.map((image) => (
-                          <div key={image.imgId} className="overflow-hidden rounded border">
+                          <div key={image.imgId} className="overflow-hidden rounded-lg border-2 border-gray-100 shadow-sm">
                             <img
                               src={image.imageUrl || IMAGE_PLACEHOLDER}
                               alt={`Ảnh đánh giá ${review.reviewId}`}
@@ -2487,10 +2554,10 @@ export default function ProductDetailPage() {
           </form>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOutfitOpen(false)}>
+            <Button variant="outline" onClick={() => setEditOutfitOpen(false)} className="border-gray-200 hover:border-gray-300">
               Hủy
             </Button>
-            <Button form="edit-outfit-form" type="submit" disabled={outfitSaving}>
+            <Button form="edit-outfit-form" type="submit" disabled={outfitSaving} className="bg-[#c1272d] hover:bg-[#a01f24] text-white">
               {outfitSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2606,10 +2673,11 @@ export default function ProductDetailPage() {
               variant="outline"
               onClick={() => handleImageDialogOpenChange(false)}
               disabled={imageSaving || imageEncoding}
+              className="border-gray-200 hover:border-gray-300"
             >
               Hủy
             </Button>
-            <Button form="edit-image-form" type="submit" disabled={imageSaving || imageEncoding}>
+            <Button form="edit-image-form" type="submit" disabled={imageSaving || imageEncoding} className="bg-[#c1272d] hover:bg-[#a01f24] text-white">
               {imageSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -2712,10 +2780,10 @@ export default function ProductDetailPage() {
           </form>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSizeOpen(false)}>
+            <Button variant="outline" onClick={() => setSizeOpen(false)} className="border-gray-200 hover:border-gray-300">
               Hủy
             </Button>
-            <Button form="edit-size-form" type="submit" disabled={sizeSaving}>
+            <Button form="edit-size-form" type="submit" disabled={sizeSaving} className="bg-[#c1272d] hover:bg-[#a01f24] text-white">
               {sizeSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
