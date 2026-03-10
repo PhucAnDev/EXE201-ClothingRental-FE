@@ -92,7 +92,7 @@ export function AIStylistPage() {
         if (!o.outfitId) return false;
         // Only show available outfits
         const status = (o.status ?? "").toLowerCase();
-        if (status && status !== "available") return false;
+        if (status && !["available", "active"].includes(status)) return false;
         return true;
       });
 

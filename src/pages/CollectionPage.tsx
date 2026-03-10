@@ -246,7 +246,7 @@ export function CollectionPage() {
         description: outfit.description || "",
         tag: outfit.isLimited ? "Cao cấp" : "",
         available: outfit.status
-          ? outfit.status.toLowerCase() === "available"
+          ? ["available", "active"].includes(outfit.status.toLowerCase())
           : true,
         createdAt: outfit.createdAt,
       };
