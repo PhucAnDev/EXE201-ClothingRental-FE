@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { X, Sparkles } from "lucide-react";
@@ -37,6 +38,7 @@ interface AIChatDialogProps {
 }
 
 export function AIChatDialog({ open, onOpenChange }: AIChatDialogProps) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY + "_messages");
@@ -202,7 +204,8 @@ export function AIChatDialog({ open, onOpenChange }: AIChatDialogProps) {
                           {message.suggestions.map((outfit) => (
                             <div
                               key={outfit.outfitId}
-                              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex gap-3 p-3"
+                              onClick={() => { onOpenChange(false); navigate(`/san-pham/${outfit.outfitId}`); }}
+                              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex gap-3 p-3 cursor-pointer hover:border-red-200 hover:shadow-md transition-all"
                             >
                               {outfit.imageUrl ? (
                                 <img
