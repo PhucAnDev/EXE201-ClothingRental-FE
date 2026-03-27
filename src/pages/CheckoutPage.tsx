@@ -224,6 +224,7 @@ export function CheckoutPage() {
   const [selectedSize, setSelectedSize] = useState(null); // For size selection in detail dialog
   const [showAddressDialog, setShowAddressDialog] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(true);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(
     null,
   );
@@ -243,6 +244,12 @@ export function CheckoutPage() {
 
   const hasSelectedServicePackages =
     includePhotoshoot && selectedServicePackages.length > 0;
+  const hasSavedAddresses = savedAddresses.length > 0;
+  const selectedSavedAddress =
+    savedAddresses.find((item) => item.id === selectedAddressId) ??
+    savedAddresses.find((item) => item.isDefault) ??
+    savedAddresses[0] ??
+    null;
 
   const calculatePhotoshootTotal = () =>
     selectedServicePackages.reduce(
@@ -673,8 +680,12 @@ export function CheckoutPage() {
 
     if (!token) {
       setSavedAddresses([]);
+      setSelectedAddressId(null);
+      setIsLoadingAddresses(false);
       return;
     }
+
+    setIsLoadingAddresses(true);
 
     try {
       const response = await getUserAddresses(token);
@@ -683,10 +694,15 @@ export function CheckoutPage() {
 
       setSavedAddresses(mappedAddresses);
 
+      const matchedSelectedAddress = mappedAddresses.find(
+        (item) => item.id === selectedAddressId,
+      );
       const defaultAddress = mappedAddresses.find((item) => item.isDefault);
       if (defaultAddress) {
         applyAddressToCustomerInfo(defaultAddress);
-      } else if (mappedAddresses.length > 0 && !selectedAddressId) {
+      } else if (matchedSelectedAddress) {
+        applyAddressToCustomerInfo(matchedSelectedAddress);
+      } else if (mappedAddresses.length > 0) {
         applyAddressToCustomerInfo(mappedAddresses[0]);
       } else if (mappedAddresses.length === 0) {
         setSelectedAddressId(null);
@@ -695,6 +711,8 @@ export function CheckoutPage() {
       setSavedAddresses([]);
       setSelectedAddressId(null);
       console.error("Failed to fetch user addresses:", error);
+    } finally {
+      setIsLoadingAddresses(false);
     }
   };
 
@@ -1110,28 +1128,30 @@ export function CheckoutPage() {
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
                     <div className="flex items-center justify-between mb-6">
                       <h2 className="text-red-600">Thông Tin Khách Hàng</h2>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                        onClick={() => setShowAddressDialog(true)}
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
+                      {hasSavedAddresses && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                          onClick={() => setShowAddressDialog(true)}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                        Thông tin của bạn
-                      </Button>
+                          <svg
+                            className="w-4 h-4 mr-2"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                          Thông tin của bạn
+                        </Button>
+                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -1172,79 +1192,72 @@ export function CheckoutPage() {
                       <div className="pt-4 border-t border-gray-200">
                         <h3 className="text-red-600 mb-4">Thông Tin Thuê Đồ</h3>
 
-                        <div className="space-y-4">
-                          <div>
-                            <Label
-                              htmlFor="address"
-                              className="text-gray-700 mb-2 block"
-                            >
-                              Địa chỉ cụ thể
-                            </Label>
-                            <Textarea
-                              id="address"
-                              value={address}
-                              onChange={(e) => setAddress(e.target.value)}
-                              placeholder="Số nhà, tên đường..."
-                              required
-                              rows={3}
-                              className="border-gray-300"
-                            />
+                        {isLoadingAddresses ? (
+                          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
+                            <p className="text-sm text-gray-500">
+                              Đang tải địa chỉ của bạn...
+                            </p>
                           </div>
+                        ) : selectedSavedAddress ? (
+                          <div className="rounded-xl border border-red-200 bg-red-50/60 p-5 space-y-3">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-gray-900 font-semibold">
+                                  {selectedSavedAddress.fullName}
+                                </p>
+                                <p className="text-gray-600 text-sm mt-1">
+                                  {selectedSavedAddress.phone}
+                                </p>
+                              </div>
+                              {selectedSavedAddress.isDefault && (
+                                <span className="inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs text-red-600">
+                                  Mặc định
+                                </span>
+                              )}
+                            </div>
 
-                          <div>
-                            <Label
-                              htmlFor="city"
-                              className="text-gray-700 mb-2 block"
-                            >
-                              Tỉnh/Thành phố
-                            </Label>
-                            <Input
-                              id="city"
-                              type="text"
-                              value={city}
-                              onChange={(e) => setCity(e.target.value)}
-                              placeholder="TP. Hồ Chí Minh"
-                              required
-                              className="border-gray-300"
-                            />
-                          </div>
+                            <div className="h-px bg-red-100" />
 
-                          <div>
-                            <Label
-                              htmlFor="district"
-                              className="text-gray-700 mb-2 block"
-                            >
-                              Quận/Huyện
-                            </Label>
-                            <Input
-                              id="district"
-                              type="text"
-                              value={district}
-                              onChange={(e) => setDistrict(e.target.value)}
-                              placeholder="Quận 1"
-                              required
-                              className="border-gray-300"
-                            />
-                          </div>
+                            <div>
+                              <p className="text-gray-900">
+                                {selectedSavedAddress.addressLine}
+                              </p>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {selectedSavedAddress.ward},{" "}
+                                {selectedSavedAddress.district},{" "}
+                                {selectedSavedAddress.city}
+                              </p>
+                            </div>
 
-                          <div>
-                            <Label
-                              htmlFor="ward"
-                              className="text-gray-700 mb-2 block"
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                              onClick={() => setShowAddressDialog(true)}
                             >
-                              Phường/Xã
-                            </Label>
-                            <Input
-                              id="ward"
-                              type="text"
-                              value={ward}
-                              onChange={(e) => setWard(e.target.value)}
-                              placeholder="Phường Bến Nghé"
-                              required
-                              className="border-gray-300"
-                            />
+                              {savedAddresses.length > 1
+                                ? "Chọn địa chỉ khác"
+                                : "Thêm địa chỉ khác"}
+                            </Button>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+                            <p className="text-gray-900 font-medium">
+                              Bạn chưa có địa chỉ giao nhận.
+                            </p>
+                            <p className="text-sm text-gray-500 mt-2">
+                              Thêm địa chỉ để tiếp tục xác nhận đơn hàng.
+                            </p>
+                            <Button
+                              type="button"
+                              className="mt-4 bg-red-600 hover:bg-red-700 text-white"
+                              onClick={() => setShowAddressDialog(true)}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Thêm địa chỉ
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1275,7 +1288,7 @@ export function CheckoutPage() {
                             d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                           />
                         </svg>
-                        Thông tin của bạn
+                        {hasSavedAddresses ? "Thông tin của bạn" : "Thêm địa chỉ"}
                       </Button>
                     </div>
 
