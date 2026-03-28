@@ -244,7 +244,6 @@ export function CheckoutPage() {
 
   const hasSelectedServicePackages =
     includePhotoshoot && selectedServicePackages.length > 0;
-  const hasSavedAddresses = savedAddresses.length > 0;
   const selectedSavedAddress =
     savedAddresses.find((item) => item.id === selectedAddressId) ??
     savedAddresses.find((item) => item.isDefault) ??
@@ -1126,32 +1125,8 @@ export function CheckoutPage() {
                 {/* Combined Customer Info & Rental Info */}
                 {includeRental && (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="mb-6">
                       <h2 className="text-red-600">Thông Tin Khách Hàng</h2>
-                      {hasSavedAddresses && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                          onClick={() => setShowAddressDialog(true)}
-                        >
-                          <svg
-                            className="w-4 h-4 mr-2"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                            />
-                          </svg>
-                          Thông tin của bạn
-                        </Button>
-                      )}
                     </div>
 
                     <div className="space-y-4">
@@ -1190,7 +1165,7 @@ export function CheckoutPage() {
                       </div>
 
                       <div className="pt-4 border-t border-gray-200">
-                        <h3 className="text-red-600 mb-4">Thông Tin Thuê Đồ</h3>
+                        <h3 className="text-red-600 mb-4">Thông Tin giao hàng</h3>
 
                         {isLoadingAddresses ? (
                           <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-5">
@@ -1266,30 +1241,8 @@ export function CheckoutPage() {
                 {/* Customer Info Only (when no rental) */}
                 {!includeRental && (
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-                    <div className="flex items-center justify-between mb-6">
+                    <div className="mb-6">
                       <h2 className="text-red-600">Thông Tin Khách Hàng</h2>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                        onClick={() => setShowAddressDialog(true)}
-                      >
-                        <svg
-                          className="w-4 h-4 mr-2"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                        {hasSavedAddresses ? "Thông tin của bạn" : "Thêm địa chỉ"}
-                      </Button>
                     </div>
 
                     <div className="space-y-4">
