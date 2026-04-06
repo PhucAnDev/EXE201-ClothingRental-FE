@@ -85,6 +85,19 @@ const normalizeOutfitSizes = (sizes: OutfitSizeItem[] = []) => {
   return [{ sizeId: 0, size: "M", stock: 1 }];
 };
 
+const resolveSizeIdByLabel = (sizes = [], selectedLabel = "") => {
+  const normalizedSelectedLabel = normalizeValue(selectedLabel);
+  if (!normalizedSelectedLabel) return 0;
+
+  const matchedSize = (Array.isArray(sizes) ? sizes : []).find(
+    (size) =>
+      normalizeValue(size?.size ?? size?.sizeLabel) === normalizedSelectedLabel,
+  );
+  const matchedSizeId = Number(matchedSize?.sizeId ?? 0);
+
+  return Number.isFinite(matchedSizeId) && matchedSizeId > 0 ? matchedSizeId : 0;
+};
+
 type SavedAddress = {
   id: number;
   fullName: string;
@@ -333,14 +346,9 @@ export function CheckoutPage() {
   );
 
   const resolveOutfitSizeId = (outfit) => {
-    const selectedLabel = normalizeValue(outfit?.selectedSize);
     const ownSizes = Array.isArray(outfit?.sizes) ? outfit.sizes : [];
-    const matchedOwnSize = ownSizes.find(
-      (size) => normalizeValue(size?.size) === selectedLabel,
-    );
-
-    const ownSizeId = Number(matchedOwnSize?.sizeId ?? 0);
-    if (Number.isFinite(ownSizeId) && ownSizeId > 0) {
+    const ownSizeId = resolveSizeIdByLabel(ownSizes, outfit?.selectedSize);
+    if (ownSizeId > 0) {
       return ownSizeId;
     }
 
@@ -350,16 +358,34 @@ export function CheckoutPage() {
     const sourceSizes = Array.isArray(sourceOutfit?.sizes)
       ? sourceOutfit.sizes
       : [];
-    const matchedSourceSize = sourceSizes.find(
-      (size) => normalizeValue(size?.size) === selectedLabel,
-    );
-    const sourceSizeId = Number(matchedSourceSize?.sizeId ?? 0);
+    const sourceSizeId = resolveSizeIdByLabel(sourceSizes, outfit?.selectedSize);
 
-    if (Number.isFinite(sourceSizeId) && sourceSizeId > 0) {
+    if (sourceSizeId > 0) {
       return sourceSizeId;
     }
 
     return 0;
+  };
+
+  const resolveOutfitSizeIdWithFallback = async (outfit, token) => {
+    const existingSizeId = resolveOutfitSizeId(outfit);
+    if (existingSizeId > 0) {
+      return existingSizeId;
+    }
+
+    const parsedOutfitId = Number(outfit?.id);
+    if (!Number.isFinite(parsedOutfitId) || parsedOutfitId <= 0) {
+      return 0;
+    }
+
+    try {
+      const sizeRes = await getOutfitSizes(parsedOutfitId, token);
+      const apiSizes = Array.isArray(sizeRes?.data) ? sizeRes.data : [];
+      return resolveSizeIdByLabel(apiSizes, outfit?.selectedSize);
+    } catch (error) {
+      console.error("Failed to refetch outfit sizes for checkout:", error);
+      return 0;
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -412,18 +438,21 @@ export function CheckoutPage() {
       : 0;
 
     const draftBookingItems: CreateBookingItemPayload[] = includeRental
-      ? selectedOutfits.map((outfit) => ({
-          outfitSizeId: resolveOutfitSizeId(outfit),
-          rentalPackageId: DEFAULT_RENTAL_PACKAGE_ID,
-          startTime: rentalStartTimeIso,
-          endTime: rentalEndTimeIso,
-          unitPrice: roundCurrency(
-            toPositiveNumber(outfit?.price, 0) * Math.max(1, Number(rentalDays) || 1),
-            0,
-          ),
-          depositAmount: 0,
-          surcharge: 0,
-        }))
+      ? await Promise.all(
+          selectedOutfits.map(async (outfit) => ({
+            outfitSizeId: await resolveOutfitSizeIdWithFallback(outfit, token),
+            rentalPackageId: DEFAULT_RENTAL_PACKAGE_ID,
+            startTime: rentalStartTimeIso,
+            endTime: rentalEndTimeIso,
+            unitPrice: roundCurrency(
+              toPositiveNumber(outfit?.price, 0) *
+                Math.max(1, Number(rentalDays) || 1),
+              0,
+            ),
+            depositAmount: 0,
+            surcharge: 0,
+          })),
+        )
       : [];
 
     if (includeRental && draftBookingItems.length === 0) {

@@ -462,6 +462,7 @@ export function ProductDetailPage() {
     const mappedSizes = Array.isArray(product.outfitSizes)
       ? product.outfitSizes
           .map((item) => ({
+            sizeId: Number(item?.sizeId ?? 0),
             size: item?.sizeLabel || item?.size || "",
             stock: Number(
               item?.availableQuantity ??
@@ -477,6 +478,7 @@ export function ProductDetailPage() {
       mappedSizes.length > 0
         ? mappedSizes
         : (product.sizes || []).map((sizeLabel) => ({
+            sizeId: 0,
             size: sizeLabel,
             stock: 1,
           }));
